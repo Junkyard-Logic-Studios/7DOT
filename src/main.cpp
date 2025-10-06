@@ -1,6 +1,5 @@
 #include <memory>
 #include <stdexcept>
-#include <format>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 
@@ -9,7 +8,7 @@ class SDLException final : public std::runtime_error
 {
 public:
 	explicit SDLException(const std::string& message) :
-		std::runtime_error(std::format("{}: {}", message, SDL_GetError()))
+		std::runtime_error(message + ": " + SDL_GetError())
 	{}
 };
 
