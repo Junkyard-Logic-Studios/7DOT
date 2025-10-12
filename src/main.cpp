@@ -60,22 +60,43 @@ public:
 					break;
 			}
 		}
-
+		
 		// render
 		int winw = 640, winh = 480;
 		float x, y;
-
+		
 		SDL_SetRenderDrawColor(_renderer.get(), 0, 0, 0, 255);
 		SDL_RenderClear(_renderer.get());
 		SDL_GetWindowSize(_window.get(), &winw, &winh);
 		SDL_SetRenderDrawColor(_renderer.get(), 255, 255, 255, 255);
-
+		
 		{
 			const char* text = _gamepads.empty() ? "Plug in a gamepad, please." : "Connected gamepads:";
-	
+			
 			x = (winw - SDL_strlen(text) * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2.0f;
 			y = winh / 3.0f;
 			SDL_RenderDebugText(_renderer.get(), x, y, text);
+		}
+		
+		{
+			char* text;
+			input::PlayerInput playerInput = _keyboard.poll();
+			SDL_asprintf(&text, "%d: %s [%f, %f, %d, %d, %d, %d, %d, %d]", -1, "keyboard", 
+				input::get::horizontalAxis(playerInput),
+				input::get::verticalAxis(playerInput),
+				input::get::start(playerInput),	
+				input::get::shoot(playerInput),	
+				input::get::jump(playerInput),
+				input::get::toggle(playerInput),
+				input::get::cancel(playerInput),
+				input::get::dashCount(playerInput)
+			);
+
+			x = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
+			y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0f;
+			SDL_RenderDebugText(_renderer.get(), x, y, text);
+			
+			free(text);
 		}
 
 		for (auto& [id, gamepad] : _gamepads)
@@ -96,19 +117,20 @@ public:
 			x = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
 			y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0f;
 			SDL_RenderDebugText(_renderer.get(), x, y, text);
-
+			
 			free(text);
 		}
-
+		
 		SDL_RenderPresent(_renderer.get());	
-
+		
 		return true;
 	}
-
+	
 private:
 	std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> _window {nullptr, SDL_DestroyWindow};
 	std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer {nullptr, SDL_DestroyRenderer};
 
+	input::Keyboard _keyboard;
 	std::unordered_map<SDL_JoystickID, input::Gamepad> _gamepads;
 };
 

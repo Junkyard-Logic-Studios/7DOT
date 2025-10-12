@@ -2,6 +2,8 @@
 #include <inttypes.h>
 #include <memory>
 #include "SDL3/SDL_gamepad.h"
+#include "SDL3/SDL_keyboard.h"
+#include "SDL3/SDL_scancode.h"
 
 
 
@@ -158,6 +160,37 @@ namespace input
     private:
         const SDL_JoystickID _id;
         const std::unique_ptr<SDL_Gamepad, decltype(&SDL_CloseGamepad)> _pGamepad;
+    };
+
+
+    class Keyboard : public IDevice
+    {
+    public:
+        inline PlayerInput poll() const
+        {
+            PlayerInput input = 0;
+
+            const bool* keysPressed = SDL_GetKeyboardState(nullptr);
+
+            // get actions
+            set::start( input, keysPressed[SDL_Scancode::SDL_SCANCODE_2]);
+            set::shoot( input, keysPressed[SDL_Scancode::SDL_SCANCODE_3]);
+            set::jump(  input, keysPressed[SDL_Scancode::SDL_SCANCODE_SPACE]);
+            set::toggle(input, keysPressed[SDL_Scancode::SDL_SCANCODE_4]);
+            set::cancel(input, keysPressed[SDL_Scancode::SDL_SCANCODE_5]);
+
+            // count dash inputs
+            uint16_t count = 0;
+            count += keysPressed[SDL_Scancode::SDL_SCANCODE_LSHIFT];
+            count += keysPressed[SDL_Scancode::SDL_SCANCODE_6];
+            set::dashCount(input, count);
+
+            // get axis inputs
+            set::horizontalAxis(input, (keysPressed[SDL_Scancode::SDL_SCANCODE_D] - keysPressed[SDL_Scancode::SDL_SCANCODE_A]) * 32767);
+            set::verticalAxis(input, (keysPressed[SDL_Scancode::SDL_SCANCODE_S] - keysPressed[SDL_Scancode::SDL_SCANCODE_W]) * 32767);
+        
+            return input;
+        }
     };
 
 };  // end namespace input
