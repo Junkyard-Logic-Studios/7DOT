@@ -1,5 +1,7 @@
 #include <memory>
 #include <stdexcept>
+#include <unordered_map>
+#include "input/input.hpp"
 #include "SDL3/SDL.h"
 
 
@@ -41,44 +43,64 @@ public:
 		// poll SDL events
 		for (SDL_Event event; SDL_PollEvent(&event);)
 		{
-			if (event.type == SDL_EVENT_QUIT)
-				return false;
-
-			if (event.type == SDL_EVENT_GAMEPAD_ADDED)
+			switch (event.type)
 			{
-				if (_gamepad) continue; 	// already assigned
+				case SDL_EVENT_QUIT:
+					return false;
 
-				auto* gamepad = SDL_OpenGamepad(event.gdevice.which);
-				if (!gamepad)
-					throw SDLException("Failed to open gamepad");
+				case SDL_EVENT_GAMEPAD_ADDED:
+					if (_gamepads.find(event.gdevice.which) == _gamepads.end())
+						if (auto* pGamepad = SDL_OpenGamepad(event.gdevice.which); pGamepad)
+							_gamepads.emplace(event.gdevice.which, pGamepad);
+					break;
 
-				_gamepad.reset(gamepad);
-			}
-
-			if (event.type == SDL_EVENT_GAMEPAD_REMOVED)
-			{
-				if (_gamepad && (SDL_GetGamepadID(_gamepad.get()) == event.gdevice.which))
-					_gamepad.release();
+				case SDL_EVENT_GAMEPAD_REMOVED:
+					if (auto it = _gamepads.find(event.gdevice.which); it != _gamepads.end())
+						_gamepads.erase(it);
+					break;
 			}
 		}
 
 		// render
 		int winw = 640, winh = 480;
-		const char* text = "Plug in a joystick, please.";
 		float x, y;
-
-		if (_gamepad)
-			text = SDL_GetGamepadName(_gamepad.get());
 
 		SDL_SetRenderDrawColor(_renderer.get(), 0, 0, 0, 255);
 		SDL_RenderClear(_renderer.get());
 		SDL_GetWindowSize(_window.get(), &winw, &winh);
-
-		x = (((float) winw) - (SDL_strlen(text) * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE)) / 2.0f;
-		y = (((float) winh) - SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2.0f;
 		SDL_SetRenderDrawColor(_renderer.get(), 255, 255, 255, 255);
-		SDL_RenderDebugText(_renderer.get(), x, y, text);
-		SDL_RenderPresent(_renderer.get());
+
+		{
+			const char* text = _gamepads.empty() ? "Plug in a gamepad, please." : "Connected gamepads:";
+	
+			x = (winw - SDL_strlen(text) * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2.0f;
+			y = winh / 3.0f;
+			SDL_RenderDebugText(_renderer.get(), x, y, text);
+		}
+
+		for (auto& [id, gamepad] : _gamepads)
+		{
+			char* text;
+			input::PlayerInput playerInput = gamepad.poll();
+			SDL_asprintf(&text, "%d: %s [%f, %f, %d, %d, %d, %d, %d, %d]", id, gamepad.getName(), 
+				input::get::horizontalAxis(playerInput),
+				input::get::verticalAxis(playerInput),
+				input::get::start(playerInput),	
+				input::get::shoot(playerInput),	
+				input::get::jump(playerInput),
+				input::get::toggle(playerInput),
+				input::get::cancel(playerInput),
+				input::get::dashCount(playerInput)
+			);
+
+			x = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
+			y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0f;
+			SDL_RenderDebugText(_renderer.get(), x, y, text);
+
+			free(text);
+		}
+
+		SDL_RenderPresent(_renderer.get());	
 
 		return true;
 	}
@@ -86,7 +108,8 @@ public:
 private:
 	std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> _window {nullptr, SDL_DestroyWindow};
 	std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer {nullptr, SDL_DestroyRenderer};
-	std::unique_ptr<SDL_Gamepad, decltype(&SDL_CloseGamepad)> _gamepad {nullptr, SDL_CloseGamepad};
+
+	std::unordered_map<SDL_JoystickID, input::Gamepad> _gamepads;
 };
 
 
