@@ -113,6 +113,7 @@ namespace input
     class IDevice
     {
     public:
+        inline virtual const char* getName() const = 0;
         inline virtual PlayerInput poll() const = 0;
     };
 
@@ -120,7 +121,7 @@ namespace input
     class Gamepad : public IDevice
     {
     public:
-        Gamepad(SDL_Gamepad* gamepad) :
+        inline Gamepad(SDL_Gamepad* gamepad) :
             _id(SDL_GetGamepadID(gamepad)),
             _pGamepad(gamepad, SDL_CloseGamepad)
         {}
@@ -166,6 +167,9 @@ namespace input
     class Keyboard : public IDevice
     {
     public:
+        inline const char* getName() const
+            { return "keyboard"; }
+
         inline PlayerInput poll() const
         {
             PlayerInput input = 0;
