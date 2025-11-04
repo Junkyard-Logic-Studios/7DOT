@@ -11,7 +11,7 @@ namespace core
     class _Scene
     {
     public:
-        inline _Scene(std::shared_ptr<Game> game) :
+        inline _Scene(Game& game) :
             _game(game)
         {}
 
@@ -27,7 +27,7 @@ namespace core
         virtual void update() = 0;
 
     protected:
-        std::shared_ptr<Game> _game;
+        Game& _game;
         bool _isActive = false;
     };
 

@@ -24,7 +24,7 @@ namespace core
             // ...
         };
 
-        inline FightScene(std::shared_ptr<Game> game) :
+        inline FightScene(Game& game) :
             _Scene(game) 
         {}
 

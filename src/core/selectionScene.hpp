@@ -14,7 +14,7 @@ namespace core
     public:
         struct State {};
 
-        inline SelectionScene(std::shared_ptr<Game> game) :
+        inline SelectionScene(Game& game) :
             _Scene(game)
         {}
 

@@ -29,7 +29,7 @@ public:
         _renderer.reset(renderer);
 
         // create main menu scene
-        auto* scene = new core::MainMenuScene(std::shared_ptr<Game>(this));
+        auto* scene = new core::MainMenuScene(*this);
         _activeScene.reset(static_cast<core::_Scene*>(scene));
 
         // show window once initialization is complete

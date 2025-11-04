@@ -14,13 +14,22 @@ namespace core
     class MainMenuScene : public _Scene
     {
     public:
-        enum NavigationOptions
+        enum NavigationOptions : uint32_t
         {
             TITLE,
+            
             PVP,
             SESSION_STATS,
             OPTIONS,
-            QUIT
+            QUIT,
+
+            PVP_LOCAL,
+            PVP_REMOTE,
+            PVP_BACK,
+
+            SESSION_STATS_BACK,
+            
+            OPTIONS_BACK,
         };
 
         struct State
@@ -31,7 +40,7 @@ namespace core
             NavigationOptions selected;
         };
 
-        MainMenuScene(std::shared_ptr<Game> game);
+        MainMenuScene(Game& game);
 
         void update();
 
