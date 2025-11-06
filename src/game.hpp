@@ -1,25 +1,33 @@
 #pragma once
+#include <chrono>
 #include <memory>
 #include <unordered_map>
 #include "SDL3/SDL.h"
 #include "SDLException.hpp"
-#include "input/input.hpp"
-#include "core/scene.hpp"
+#include "constants.hpp"
+#include "input/iDevice.hpp"
 #include "core/mainMenuScene.hpp"
 #include "core/selectionScene.hpp"
 #include "core/fightScene.hpp"
 
 
 
+
 class Game
 {
 public:
+    inline static int64_t currentTick()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count() / MS_PER_TICK;
+    }
+
     Game()
     {
         // init SDL
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
             throw SDLException("Failed to init SDL");
-        
+
         // prepare SDL window and renderer
         SDL_Window *window;
         SDL_Renderer *renderer;
@@ -68,10 +76,15 @@ public:
             }
         }
 
+        // poll input devices
+        _keyboard.poll();
+        for (auto& [_, gamepad] : _gamepads)
+            gamepad.poll();
+
         // update active scene
         if (_activeScene)
             _activeScene->update();
-            
+
         // handle scene swaps
 
         return true;

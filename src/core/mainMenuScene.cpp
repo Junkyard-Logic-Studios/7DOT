@@ -38,10 +38,12 @@ void core::MainMenuScene::update()
     //  Quit
     // -------------------------------
 
+    int64_t currentTick = Game::currentTick();
+
     State newState {};
 
     for (auto* pDevice : _game.getInputDevices())
-        newState.inputDevicePolls.push_back({ pDevice->getName(), pDevice->poll() });
+        newState.inputDevicePolls.push_back({ pDevice->getName(), pDevice->getInput(currentTick) });
 
     newState.currentLevel = _state.currentLevel;
     newState.selected = _state.selected;
