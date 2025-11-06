@@ -106,7 +106,7 @@ void core::MainMenuScene::update()
         // check for up/down inputs
         float previousVAxis = input::get::verticalAxis(previousInput);
         float currentVAxis = input::get::verticalAxis(currentInput);
-        if (abs(currentVAxis) > abs(previousVAxis) && _state.selected != TITLE)
+        if (previousVAxis == 0.0f && currentVAxis != 0.0f && _state.selected != TITLE)
         {
             auto next = NavigationOptions(currentVAxis > 0 ? 
                 _state.selected + 1 : _state.selected - 1);
