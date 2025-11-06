@@ -40,102 +40,99 @@ void core::MainMenuScene::update()
 
     int64_t currentTick = Game::currentTick();
 
-    State newState {};
-
+    // check latest inputs from all devices
+    _state.inputDevicePolls.clear();
     for (auto* pDevice : _game.getInputDevices())
-        newState.inputDevicePolls.push_back({ pDevice->getName(), pDevice->getInput(currentTick) });
-
-    newState.currentLevel = _state.currentLevel;
-    newState.selected = _state.selected;
-
-    if (newState.inputDevicePolls.size() != _state.inputDevicePolls.size())
     {
-        _state = newState;
-        return;
-    }
+        input::PlayerInput previousInput = pDevice->getInput(currentTick - 1);
+        input::PlayerInput currentInput = pDevice->getInput(currentTick);
+        input::PlayerInput toggle = ~previousInput & currentInput;
 
-    // check for confirmation inputs
-    for (int i = 0; i < newState.inputDevicePolls.size(); i++)
-    {
-        input::PlayerInput toggle = (~_state.inputDevicePolls[i].second) & newState.inputDevicePolls[i].second;
-        if (!input::get::jump(toggle)) continue;
+        _state.inputDevicePolls.push_back({ pDevice->getName(), currentInput });
 
-        switch (_state.selected)
+        // check for confirmation inputs
+        if (input::get::jump(toggle))
         {
-        case TITLE:
-            newState.selected = PVP;
-            break;
-        case PVP:
-            newState.currentLevel = PVP;
-            newState.selected = PVP_LOCAL;
-            break;
-        case SESSION_STATS:
-            newState.currentLevel = SESSION_STATS;
-            newState.selected = SESSION_STATS_BACK;
-            break;
-        case OPTIONS:
-            newState.currentLevel = OPTIONS;
-            newState.selected = OPTIONS_BACK;
-            break;
-        
-        case PVP_LOCAL: break;
-        case PVP_REMOTE: break;
-        case PVP_BACK:
-            newState.selected = PVP;
-            newState.currentLevel = TITLE;
-            break;
+            switch (_state.selected)
+            {
+            case TITLE:
+                _state.selected = PVP;
+                break;
+            case PVP:
+                _state.currentLevel = PVP;
+                _state.selected = PVP_LOCAL;
+                break;
+            case SESSION_STATS:
+                _state.currentLevel = SESSION_STATS;
+                _state.selected = SESSION_STATS_BACK;
+                break;
+            case OPTIONS:
+                _state.currentLevel = OPTIONS;
+                _state.selected = OPTIONS_BACK;
+                break;
+            
+            case PVP_LOCAL: break;
+            case PVP_REMOTE: break;
+            case PVP_BACK:
+                _state.selected = PVP;
+                _state.currentLevel = TITLE;
+                break;
 
-        case SESSION_STATS_BACK:
-            newState.selected = SESSION_STATS;
-            newState.currentLevel = TITLE;
-            break;
+            case SESSION_STATS_BACK:
+                _state.selected = SESSION_STATS;
+                _state.currentLevel = TITLE;
+                break;
 
-        case OPTIONS_BACK:
-            newState.selected = OPTIONS;
-            newState.currentLevel = TITLE;
-            break;
+            case OPTIONS_BACK:
+                _state.selected = OPTIONS;
+                _state.currentLevel = TITLE;
+                break;
 
-        case QUIT: break;
+            case QUIT: break;
+            }
+
+            continue;   // recognize only 1 input per device
+        }
+
+        // check for cancellation inputs
+        if (input::get::cancel(toggle) && _state.currentLevel != TITLE)
+        {
+            _state.selected = _state.currentLevel;
+            _state.currentLevel = TITLE;
+
+            continue;   // recognize only 1 input per device
+        }
+
+        // check for up/down inputs
+        float previousVAxis = input::get::verticalAxis(previousInput);
+        float currentVAxis = input::get::verticalAxis(currentInput);
+        if (abs(currentVAxis) > abs(previousVAxis) && _state.selected != TITLE)
+        {
+            auto next = NavigationOptions(currentVAxis > 0 ? 
+                _state.selected + 1 : _state.selected - 1);
+
+            switch (_state.currentLevel)
+            {
+            case TITLE:
+                _state.selected = currentVAxis > 0 ? 
+                    (_state.selected == QUIT ? QUIT : next) : 
+                    (_state.selected == PVP ? PVP : next);
+                break;
+
+            case PVP:
+                _state.selected = currentVAxis > 0 ?
+                    (_state.selected == PVP_BACK ? PVP_BACK : next) :
+                    (_state.selected == PVP_LOCAL ? PVP_LOCAL : next);
+                break;
+            }
+
+            continue;   // recognize only 1 input per device
         }
     }
-
-    // check for cancel inputs
-    for (int i = 0; i < newState.inputDevicePolls.size(); i++)
-    {
-        input::PlayerInput toggle = (~_state.inputDevicePolls[i].second) & newState.inputDevicePolls[i].second;
-        if (!input::get::cancel(toggle) || _state.currentLevel == TITLE) continue;
-
-        newState.selected = _state.currentLevel;
-        newState.currentLevel = TITLE;
-    }
-
-    // check for up/down inputs
-    for (int i = 0; i < newState.inputDevicePolls.size(); i++)
-    {
-        float prev = input::get::verticalAxis(_state.inputDevicePolls[i].second);
-        float value = input::get::verticalAxis(newState.inputDevicePolls[i].second);
-        if (prev != 0.0f || value == 0.0f || _state.selected == TITLE) continue;
-
-        auto next = NavigationOptions(value > 0 ? _state.selected + 1 : _state.selected - 1);
-
-        switch (_state.currentLevel)
-        {
-        case TITLE:
-            newState.selected = value > 0 ? 
-                (_state.selected == QUIT ? QUIT : next) : 
-                (_state.selected == PVP ? PVP : next);
-            break;
-
-        case PVP:
-            newState.selected = value > 0 ?
-                (_state.selected == PVP_BACK ? PVP_BACK : next) :
-                (_state.selected == PVP_LOCAL ? PVP_LOCAL : next);
-            break;
-        }
-    }
-
-    _state = newState;
 
     _renderer->pushState(_state);
     _renderer->render(_game.getWindow(), _game.getRenderer());
+
+    // idle till next game tick to avoid inputs beeing applied twice
+    while (currentTick == Game::currentTick());
 }
