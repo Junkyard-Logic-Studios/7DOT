@@ -15,6 +15,7 @@ constexpr T roundup_pow2(T num)
     return r;
 }
 
+#define DEBUG
 #define MS_PER_TICK 10                      // -> 100 ticks per second
 #define MAX_ROLLBACK_MS 1000                // -> maximum rollback of 1 second
 #define MAX_ROLLBACK_TICKS roundup_div(MAX_ROLLBACK_MS, MS_PER_TICK)

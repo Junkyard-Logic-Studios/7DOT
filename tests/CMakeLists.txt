@@ -13,4 +13,18 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
+add_executable(
+  7dot_test
+  inputBuffer.cpp
+)
+target_include_directories(
+	7dot_test PRIVATE
+	"../src"
+)
+target_link_libraries(
+  7dot_test
+  GTest::gtest_main
+)
+
 include(GoogleTest)
+gtest_discover_tests(7dot_test)

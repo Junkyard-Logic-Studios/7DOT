@@ -16,11 +16,13 @@ namespace input
     public:
         inline void insert(TTime timestamp, TInput input)
         {
+        #ifdef DEBUG
             if (timestamp + NElem <= _latest)
                 throw std::invalid_argument("timestamp too old\n"\
                     "timestamp: " + std::to_string(timestamp) +
                     "\n_latest: " + std::to_string(_latest) +
                     "\nNElem: " + std::to_string(NElem));
+        #endif
 
             // insert before latest
             if (timestamp < _latest)
@@ -54,6 +56,14 @@ namespace input
 
         inline TInput operator[](TTime timestamp) const 
         {
+        #ifdef DEBUG
+            if (timestamp + NElem <= _latest)
+                throw std::invalid_argument("timestamp too old\n"\
+                    "timestamp: " + std::to_string(timestamp) +
+                    "\n_latest: " + std::to_string(_latest) +
+                    "\nNElem: " + std::to_string(NElem));
+        #endif
+
             timestamp = std::min(timestamp, _latest);
             return _inputBuffer[timestamp % NElem];
         }

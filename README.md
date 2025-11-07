@@ -29,7 +29,7 @@ mkdir build && cd build
 
 Then configure the cmake project:
 ```
-cmake ..
+cmake .. -DBUILD_TESTS=<ON|OFF>
 ```
 
 Finally build with:
@@ -42,4 +42,9 @@ cmake --build . -j 8
 From the toplevel directory of the repository, run with:
 ```
 build/bin/7dot
+```
+
+If you have built tests in the previous step, these can be executed with:
+```
+build/bin/7dot_test
 ```

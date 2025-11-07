@@ -47,7 +47,7 @@ namespace input
         inline void cancel(PlayerInput& input, bool value) 
             { input = (input & ~BitMask::CANCEL) | (value * BitMask::CANCEL); }
         
-        inline void horizontalAxis(PlayerInput& input, Sint16 value)
+        inline void horizontalAxis(PlayerInput& input, int16_t value)
         {
             uint16_t sign = value < 0;
             value = (value ^ -sign) >> 4;     // get one's complement representation
@@ -56,7 +56,7 @@ namespace input
                   | (sign * BitMask::HORIZONTAL_AXIS_SIGN);
         }
 
-        inline void verticalAxis(PlayerInput& input, Sint16 value)
+        inline void verticalAxis(PlayerInput& input, int16_t value)
         {
             uint16_t sign = value < 0;
             value = (value ^ -sign);          // get one's complement representation
