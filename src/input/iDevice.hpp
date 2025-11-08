@@ -21,6 +21,7 @@ namespace input
 
     protected:
         InputBuffer _inputBuffer;
+        PlayerInput _lastInput = 0;
 
         inline virtual PlayerInput _poll() const = 0;
     };
