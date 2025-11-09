@@ -18,6 +18,11 @@ namespace core
             _Scene(game)
         {}
 
+        inline void activate() {}
+        inline void deactivate() {}
+        inline UpdateReturnStatus update() 
+            { return SWITCH_MAINMENU; }
+
     private:
         std::unique_ptr<renderer::_Renderer<SelectionScene::State>> _renderer;
         State* _stateBuffer;

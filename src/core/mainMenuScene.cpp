@@ -11,8 +11,11 @@ core::MainMenuScene::MainMenuScene(Game& game) :
     _renderer.reset(static_cast<renderer::_Renderer<MainMenuScene::State>*>(renderer));
 }
 
+void core::MainMenuScene::activate() {}
 
-void core::MainMenuScene::update()
+void core::MainMenuScene::deactivate() {}
+
+core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
 {
     // main menu navigation logic using game inputs
     //
@@ -71,8 +74,12 @@ void core::MainMenuScene::update()
                 _state.selected = OPTIONS_BACK;
                 break;
             
-            case PVP_LOCAL: break;
+            case PVP_LOCAL:
+                return UpdateReturnStatus::SWITCH_SELECTION;
+
             case PVP_REMOTE: break;
+                return UpdateReturnStatus::SWITCH_SELECTION;
+            
             case PVP_BACK:
                 _state.selected = PVP;
                 _state.currentLevel = TITLE;
@@ -88,7 +95,8 @@ void core::MainMenuScene::update()
                 _state.currentLevel = TITLE;
                 break;
 
-            case QUIT: break;
+            case QUIT:
+                return UpdateReturnStatus::QUIT;
             }
 
             continue;   // recognize only 1 input per device
@@ -135,4 +143,6 @@ void core::MainMenuScene::update()
 
     // idle till next game tick to avoid inputs beeing applied twice
     while (currentTick == Game::currentTick());
+
+    return UpdateReturnStatus::STAY;
 }

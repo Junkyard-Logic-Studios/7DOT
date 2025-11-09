@@ -41,8 +41,9 @@ namespace core
         };
 
         MainMenuScene(Game& game);
-
-        void update();
+        void activate();
+        void deactivate();
+        UpdateReturnStatus update();
 
     private:
         std::unique_ptr<renderer::_Renderer<MainMenuScene::State>> _renderer;

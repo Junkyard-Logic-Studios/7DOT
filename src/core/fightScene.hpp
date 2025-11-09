@@ -28,8 +28,10 @@ namespace core
             _Scene(game) 
         {}
 
-        inline ~FightScene() 
-        {}
+        inline void activate() {}
+        inline void deactivate() {}
+        inline UpdateReturnStatus update() 
+            { return SWITCH_SELECTION; }
 
     private:
         std::unique_ptr<renderer::_Renderer<FightScene::State>> _renderer;

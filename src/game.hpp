@@ -6,6 +6,7 @@
 #include "SDLException.hpp"
 #include "constants.hpp"
 #include "input/iDevice.hpp"
+#include "core/scene.hpp"
 #include "core/mainMenuScene.hpp"
 #include "core/selectionScene.hpp"
 #include "core/fightScene.hpp"
@@ -35,9 +36,9 @@ public:
         _window.reset(window);
         _renderer.reset(renderer);
 
-        // create main menu scene
-        auto* scene = new core::MainMenuScene(*this);
-        _activeScene.reset(static_cast<core::_Scene*>(scene));
+        // pick main menu scene as first active scene
+        _activeScene = static_cast<core::_Scene*>(&_mainMenuScene);
+        _activeScene->activate();
 
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
@@ -45,6 +46,7 @@ public:
 
     ~Game()
     {
+        _activeScene->deactivate();
         SDL_Quit();
     }
 
@@ -81,10 +83,29 @@ public:
             gamepad.poll();
 
         // update active scene
-        if (_activeScene)
-            _activeScene->update();
+        switch (_activeScene->update())
+        {
+        case core::_Scene::UpdateReturnStatus::SWITCH_MAINMENU:
+            _activeScene->deactivate();
+            _activeScene = &_mainMenuScene;
+            _activeScene->activate();
+            break;
 
-        // handle scene swaps
+        case core::_Scene::UpdateReturnStatus::SWITCH_SELECTION:
+            _activeScene->deactivate();
+            _activeScene = &_selectionScene;
+            _activeScene->activate();
+            break;
+
+        case core::_Scene::UpdateReturnStatus::SWITCH_FIGHT:
+            _activeScene->deactivate();
+            _activeScene = &_fightScene;
+            _activeScene->activate();
+            break;
+
+        case core::_Scene::UpdateReturnStatus::QUIT:
+            return false;
+        }
 
         return true;
     }
@@ -106,11 +127,17 @@ public:
     }
 
 private:
+    // SDL handles
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> _window{nullptr, SDL_DestroyWindow};
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer{nullptr, SDL_DestroyRenderer};
 
-    std::unique_ptr<core::_Scene> _activeScene;
+    // game scenes
+    core::MainMenuScene  _mainMenuScene  = core::MainMenuScene(*this);
+    core::SelectionScene _selectionScene = core::SelectionScene(*this);
+    core::FightScene     _fightScene     = core::FightScene(*this);
+    core::_Scene*        _activeScene;
 
+    // input devices
     input::Keyboard _keyboard;
     std::unordered_map<SDL_JoystickID, input::Gamepad> _gamepads;
 };
