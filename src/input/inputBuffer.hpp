@@ -73,7 +73,7 @@ namespace input
             return _latest;
         }
 
-        inline std::size_t size() const
+        inline static std::size_t size()
         {
             return NElem;
         }
@@ -89,7 +89,11 @@ namespace input
         InputBufferT<
             int64_t, 
             PlayerInput, 
-            static_cast<std::size_t>(roundup_pow2(MAX_ROLLBACK_TICKS + MAX_INPUT_LOOKBACK_TICKS))
-        >;
+            static_cast<std::size_t>(
+                roundup_pow2(
+                    std::chrono::duration_cast<std::chrono::ticks>(MAX_ROLLBACK).count() + 
+                    std::chrono::duration_cast<std::chrono::ticks>(MAX_INPUT_LOOKBACK).count()
+                )
+            )>;
 
 };  // end namespace input

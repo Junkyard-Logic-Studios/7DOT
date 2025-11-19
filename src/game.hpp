@@ -16,10 +16,23 @@
 class Game
 {
 public:
+    inline static std::chrono::system_clock::time_point startTime()
+    {
+        using namespace std::chrono;
+        static system_clock::time_point start = system_clock::now();
+        return start;
+    }
+
     inline static int64_t currentTick()
     {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count() / MS_PER_TICK;
+        using namespace std::chrono;
+        return duration_cast<ticks>(system_clock::now() - startTime()).count();
+    }
+
+    inline static std::chrono::system_clock::time_point nextTickTime(int64_t tick)
+    {
+        using namespace std::chrono;
+        return startTime() + duration_cast<system_clock::duration>(ticks(tick + 1));
     }
 
     Game()
@@ -42,6 +55,12 @@ public:
 
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
+
+        // log some info
+        SDL_LogInfo(0, "ms per tick:              %i",  MS_PER_TICK);
+        SDL_LogInfo(0, "max rollback ticks:       %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_ROLLBACK).count());
+        SDL_LogInfo(0, "max input lookback ticks: %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_INPUT_LOOKBACK).count());
+        SDL_LogInfo(0, "input buffer size:        %li", input::InputBuffer::size());
     }
 
     ~Game()
@@ -83,26 +102,19 @@ public:
             gamepad.poll();
 
         // update active scene
+        const auto switchScene = [&](core::_Scene& next) {
+            _activeScene->deactivate();
+            _activeScene = &next;
+            _activeScene->activate();
+        };
         switch (_activeScene->update())
         {
         case core::_Scene::UpdateReturnStatus::SWITCH_MAINMENU:
-            _activeScene->deactivate();
-            _activeScene = &_mainMenuScene;
-            _activeScene->activate();
-            break;
-
+            switchScene(_mainMenuScene); break;
         case core::_Scene::UpdateReturnStatus::SWITCH_SELECTION:
-            _activeScene->deactivate();
-            _activeScene = &_selectionScene;
-            _activeScene->activate();
-            break;
-
+            switchScene(_selectionScene); break;
         case core::_Scene::UpdateReturnStatus::SWITCH_FIGHT:
-            _activeScene->deactivate();
-            _activeScene = &_fightScene;
-            _activeScene->activate();
-            break;
-
+            switchScene(_fightScene); break;
         case core::_Scene::UpdateReturnStatus::QUIT:
             return false;
         }

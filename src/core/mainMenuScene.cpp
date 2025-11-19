@@ -1,3 +1,4 @@
+#include <thread>
 #include "mainMenuScene.hpp"
 #include "../renderer/mainMenuRenderer.hpp"
 #include "../game.hpp"
@@ -141,8 +142,8 @@ core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
     _renderer->pushState(_state);
     _renderer->render(_game.getWindow(), _game.getRenderer());
 
-    // idle till next game tick to avoid inputs beeing applied twice
-    while (currentTick == Game::currentTick());
+    // sleep till next game tick to avoid inputs beeing applied twice
+    std::this_thread::sleep_until(Game::nextTickTime(currentTick));
 
     return UpdateReturnStatus::STAY;
 }

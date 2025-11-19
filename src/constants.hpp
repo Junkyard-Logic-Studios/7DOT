@@ -1,11 +1,9 @@
 #pragma once
 #include <type_traits>
+#include <chrono>
 
-template<typename T, typename std::enable_if_t<std::is_integral<std::decay_t<T>>::value>* = nullptr>
-constexpr T roundup_div(T dividend, T divisor)
-{
-    return (dividend + divisor - 1) / divisor;
-}
+using namespace std::chrono_literals;
+
 
 template<typename T, typename std::enable_if_t<std::is_integral<std::decay_t<T>>::value>* = nullptr>
 constexpr T roundup_pow2(T num)
@@ -16,8 +14,12 @@ constexpr T roundup_pow2(T num)
 }
 
 #define DEBUG
-#define MS_PER_TICK 10                      // -> 100 ticks per second
-#define MAX_ROLLBACK_MS 1000                // -> maximum rollback of 1 second
-#define MAX_ROLLBACK_TICKS roundup_div(MAX_ROLLBACK_MS, MS_PER_TICK)
-#define MAX_INPUT_LOOKBACK_MS 1000          // -> state computation looks at no inputs older than 1 second
-#define MAX_INPUT_LOOKBACK_TICKS roundup_div(MAX_INPUT_LOOKBACK_MS, MS_PER_TICK)
+constexpr auto MS_PER_TICK = 10;            // -> 100 ticks per second
+constexpr auto MAX_ROLLBACK = 1s;           // -> maximum rollback of 1 second
+constexpr auto MAX_INPUT_LOOKBACK = 1s;     // -> state computation looks at no inputs older than 1 second
+
+
+namespace std::chrono 
+{
+    using ticks = duration<int64_t, std::ratio<MS_PER_TICK, 1000>::type>;
+};
