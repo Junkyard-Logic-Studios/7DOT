@@ -89,11 +89,12 @@ namespace input
         InputBufferT<
             int64_t, 
             PlayerInput, 
-            static_cast<std::size_t>(
-                roundup_pow2(
-                    std::chrono::duration_cast<std::chrono::ticks>(MAX_ROLLBACK).count() + 
-                    std::chrono::duration_cast<std::chrono::ticks>(MAX_INPUT_LOOKBACK).count()
-                )
-            )>;
+            []{
+                auto num = std::chrono::duration_cast<std::chrono::ticks>(
+                    MAX_ROLLBACK + MAX_INPUT_LOOKBACK).count();
+                std::size_t r = 1;
+                while (r < num && r) r <<= 1;
+                return r;
+            }()>;
 
 };  // end namespace input
