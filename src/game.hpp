@@ -23,13 +23,13 @@ public:
         return start;
     }
 
-    inline static int64_t currentTick()
+    inline static tick_t currentTick()
     {
         using namespace std::chrono;
         return duration_cast<ticks>(system_clock::now() - startTime()).count();
     }
 
-    inline static std::chrono::system_clock::time_point nextTickTime(int64_t tick)
+    inline static std::chrono::system_clock::time_point nextTickTime(tick_t tick)
     {
         using namespace std::chrono;
         return startTime() + duration_cast<system_clock::duration>(ticks(tick + 1));
@@ -60,7 +60,7 @@ public:
         SDL_LogInfo(0, "ms per tick:              %i",  MS_PER_TICK);
         SDL_LogInfo(0, "max rollback ticks:       %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_ROLLBACK).count());
         SDL_LogInfo(0, "max input lookback ticks: %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_INPUT_LOOKBACK).count());
-        SDL_LogInfo(0, "input buffer size:        %li", input::InputBuffer::size());
+        SDL_LogInfo(0, "input buffer size:        %li", input::INPUT_BUFFER_SIZE);
     }
 
     ~Game()

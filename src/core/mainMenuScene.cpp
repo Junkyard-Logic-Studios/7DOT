@@ -42,7 +42,7 @@ core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
     //  Quit
     // -------------------------------
 
-    int64_t currentTick = Game::currentTick();
+    tick_t currentTick = Game::currentTick();
 
     // check latest inputs from all devices
     _state.inputDevicePolls.clear();

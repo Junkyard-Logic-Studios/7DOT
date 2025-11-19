@@ -1,161 +1,206 @@
 #include <gtest/gtest.h>
-#include "constants.hpp"
 #include "input/inputBuffer.hpp"
-#include <iostream>
+using namespace input;
 
 
 
 TEST(InputBufferTest, InitializedToZero)
 {
-    // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
+    InputBuffer inputBuffer;
 
     // check
-    for (std::size_t i = 0; i < inputBuffer.size(); i++)
+    for (std::size_t i = 0; i < INPUT_BUFFER_SIZE; i++)
         EXPECT_EQ(inputBuffer[i], 0);
 }
 
 
 TEST(InputBufferTest, Insert)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5, 0xA);
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
 
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 4], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 5], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 6], 0xA);
-    EXPECT_EQ(inputBuffer[std::numeric_limits<int64_t>::max()], 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 4]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 5]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 6]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[std::numeric_limits<tick_t>::max()]), 0xA);
 }
 
 
 TEST(InputBufferTest, InsertBeforeLatest)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5, 0xA);
-    inputBuffer.insert(1'000'000 + 1, 0xB);
-    
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
+    set::timestamp(pin, 1'000'000 + 1);
+    set::actions(pin, 0xB);
+    inputBuffer.insert(pin);
+   
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 0], 0);    
-    EXPECT_EQ(inputBuffer[1'000'000 + 1], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 2], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 3], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 4], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 5], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 6], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 7], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 8], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 9], 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 0]), 0);    
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 1]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 2]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 3]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 4]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 5]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 6]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 7]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 8]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 9]), 0xA);
 }
 
 
 TEST(InputBufferTest, InsertAfterLatest)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5, 0xA);
-    inputBuffer.insert(1'000'000 + 8, 0xB);
-    
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
+    set::timestamp(pin, 1'000'000 + 8);
+    set::actions(pin, 0xB);
+    inputBuffer.insert(pin);
+
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 0], 0);    
-    EXPECT_EQ(inputBuffer[1'000'000 + 1], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 2], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 3], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 4], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 5], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 6], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 7], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 8], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 9], 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 0]), 0);    
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 1]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 2]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 3]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 4]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 5]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 6]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 7]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 8]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 9]), 0xB);
 }
 
 
 TEST(InputBufferTest, InsertAtLatest)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5, 0xA);
-    inputBuffer.insert(1'000'000 + 5, 0xB);
-    
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xB);
+    inputBuffer.insert(pin);
+
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 0], 0);    
-    EXPECT_EQ(inputBuffer[1'000'000 + 1], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 2], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 3], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 4], 0);
-    EXPECT_EQ(inputBuffer[1'000'000 + 5], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 6], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 7], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 8], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 9], 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 0]), 0);    
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 1]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 2]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 3]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 4]), 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 5]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 6]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 7]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 8]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 9]), 0xB);
 }
+
 
 
 TEST(InputBufferTest, InsertAtLatestPlusSize)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5,  0xA);
-    inputBuffer.insert(1'000'000 + 15, 0xB);
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
+    set::timestamp(pin, 1'000'000 + 5 + INPUT_BUFFER_SIZE);
+    set::actions(pin, 0xB);
+    inputBuffer.insert(pin);
     
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 10], 0xA);    
-    EXPECT_EQ(inputBuffer[1'000'000 + 11], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 12], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 13], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 14], 0xA);
-    EXPECT_EQ(inputBuffer[1'000'000 + 15], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 16], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 17], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 18], 0xB);
-    EXPECT_EQ(inputBuffer[1'000'000 + 19], 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 0 + INPUT_BUFFER_SIZE]), 0xA);    
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 1 + INPUT_BUFFER_SIZE]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 2 + INPUT_BUFFER_SIZE]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 3 + INPUT_BUFFER_SIZE]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 4 + INPUT_BUFFER_SIZE]), 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 5 + INPUT_BUFFER_SIZE]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 6 + INPUT_BUFFER_SIZE]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 7 + INPUT_BUFFER_SIZE]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 8 + INPUT_BUFFER_SIZE]), 0xB);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 9 + INPUT_BUFFER_SIZE]), 0xB);
 }
 
 
 TEST(InputBufferTest, InsertTooOld)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000, 0xA);
+    set::timestamp(pin, 1'000'000);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
+    set::timestamp(pin, 0);
+    set::actions(pin, 0xB);
 
     // check
 #ifdef DEBUG
-    EXPECT_THROW(inputBuffer.insert(0, 0xB), std::invalid_argument);
+    EXPECT_THROW(inputBuffer.insert(pin), std::invalid_argument);
 #else
-    EXPECT_NO_THROW(inputBuffer.insert(0, 0xB));
+    EXPECT_NO_THROW(inputBuffer.insert(pin));
 #endif
 }
 
 
 TEST(InputBufferTest, ReadBeforeLatest)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5, 0xA);
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
 
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 2], 0);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 2]), 0);
 }
 
 
 TEST(InputBufferTest, ReadAfterLatest)
 {
-    // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000 + 5, 0xA);
+    InputBuffer inputBuffer;
+    PlayerInput pin;
 
+    // prepare
+    set::timestamp(pin, 1'000'000 + 5);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
+    
     // check
-    EXPECT_EQ(inputBuffer[1'000'000 + 7], 0xA);
+    EXPECT_EQ(get::actions(inputBuffer[1'000'000 + 7]), 0xA);
 }
 
 
 TEST(InputBufferTest, ReadTooOld)
 {
+    InputBuffer inputBuffer;
+    PlayerInput pin;
+
     // prepare
-    input::InputBufferT<int64_t, input::PlayerInput, 10> inputBuffer;
-    inputBuffer.insert(1'000'000, 0xA);
+    set::timestamp(pin, 1'000'000);
+    set::actions(pin, 0xA);
+    inputBuffer.insert(pin);
 
     // check
 #ifdef DEBUG

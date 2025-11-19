@@ -17,11 +17,11 @@ namespace input
     public:
         inline virtual const char* getName() const = 0;
         void poll();
-        PlayerInput getInput(int64_t tick) const;
+        PlayerInput getInput(tick_t tick) const;
 
     protected:
         InputBuffer _inputBuffer;
-        PlayerInput _lastInput = 0;
+        uint16_t _lastActions = 0;
 
         inline virtual PlayerInput _poll() const = 0;
     };

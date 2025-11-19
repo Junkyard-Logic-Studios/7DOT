@@ -8,14 +8,15 @@ void input::IDevice::poll()
     // actual input device polling might take multiple ticks, therefore 
     // define an inputs timestamp to be after its polling has completed
     PlayerInput input = _poll();
-    if (input != _lastInput)
+    if (get::actions(input) != _lastActions)
     {
-        _inputBuffer.insert(Game::currentTick(), input);
-        _lastInput = input;
+        set::timestamp(input, Game::currentTick() + std::chrono::duration_cast<std::chrono::ticks>(VIRTUAL_INPUT_LAG).count());
+        _inputBuffer.insert(input);
+        _lastActions = get::actions(input);
     }
 }
 
-input::PlayerInput input::IDevice::getInput(int64_t tick) const
+input::PlayerInput input::IDevice::getInput(tick_t tick) const
 {
     return _inputBuffer[tick];
 }
