@@ -16,6 +16,10 @@ set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 add_subdirectory(external/SDL EXCLUDE_FROM_ALL)
 
+# add SDL_net
+set(RISCOS ON)	# forces SDL_net to build statically
+add_subdirectory(external/SDL_net EXCLUDE_FROM_ALL)
+
 # add own source directory
 add_subdirectory(src)
 

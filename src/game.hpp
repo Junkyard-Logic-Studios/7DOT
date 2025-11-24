@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_map>
 #include "SDL3/SDL.h"
+#include "SDL3_net/SDL_net.h"
 #include "SDLException.hpp"
 #include "constants.hpp"
 #include "input/iDevice.hpp"
@@ -53,6 +54,9 @@ public:
         _activeScene = static_cast<core::_Scene*>(&_mainMenuScene);
         _activeScene->activate();
 
+        // initialize networking
+        NET_Init();
+
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
 
@@ -66,6 +70,7 @@ public:
     ~Game()
     {
         _activeScene->deactivate();
+        NET_Quit();
         SDL_Quit();
     }
 
