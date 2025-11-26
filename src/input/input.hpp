@@ -1,40 +1,57 @@
 #pragma once
 #include <inttypes.h>
-#include <memory>
-#include "SDL3/SDL_gamepad.h"
-#include "SDL3/SDL_keyboard.h"
-#include "SDL3/SDL_scancode.h"
+#include "../constants.hpp"
 
 
 
 namespace input
 {
     
-    using PlayerInput = uint16_t;
+    using PlayerInput = uint64_t;
 
 
-    enum BitMask : uint16_t
+    enum BitMask : uint64_t
     {
-        DASH                  = 0b0000'0000'0000'0111,
-        START                 = 0b0000'0000'0000'1000,
-        SHOOT                 = 0b0000'0000'0001'0000,
-        JUMP                  = 0b0000'0000'0010'0000,
-        TOGGLE                = 0b0000'0000'0100'0000,
-        CANCEL                = 0b0000'0000'1000'0000,
-        HORIZONTAL_AXIS_SIGN  = 0b0000'1000'0000'0000,
-        HORIZONTAL_AXIS_VALUE = 0b0000'0111'0000'0000,
+        HOST_ID               = 0xFF00'0000'0000'0000,
+
+        DEVICE_ID             = 0x00FF'0000'0000'0000,
+
+        ACTIONS               = 0x0000'FFFF'0000'0000,
+
+        DASH                  = 0x0000'0007'0000'0000,
+        START                 = 0x0000'0008'0000'0000,
+        SHOOT                 = 0x0000'0010'0000'0000,
+        JUMP                  = 0x0000'0020'0000'0000,
+        TOGGLE                = 0x0000'0040'0000'0000,
+        CANCEL                = 0x0000'0080'0000'0000,
+        HORIZONTAL_AXIS_SIGN  = 0x0000'0800'0000'0000,
+        HORIZONTAL_AXIS_VALUE = 0x0000'0700'0000'0000,
         HORIZONTAL_AXIS       = HORIZONTAL_AXIS_SIGN | HORIZONTAL_AXIS_VALUE,
-        VERTICAL_AXIS_SIGN    = 0b1000'0000'0000'0000,
-        VERTICAL_AXIS_VALUE   = 0b0111'0000'0000'0000,
-        VERTICAL_AXIS         = VERTICAL_AXIS_SIGN | VERTICAL_AXIS_VALUE
+        VERTICAL_AXIS_SIGN    = 0x0000'8000'0000'0000,
+        VERTICAL_AXIS_VALUE   = 0x0000'7000'0000'0000,
+        VERTICAL_AXIS         = VERTICAL_AXIS_SIGN | VERTICAL_AXIS_VALUE,
+    
+        TIMESTAMP             = 0x0000'0000'FFFF'FFFF
     };
 
 
     namespace set
     {
 
-        inline void dashCount (PlayerInput& input, unsigned int value) 
-            { input = (input & ~BitMask::DASH) | value & BitMask::DASH; }
+        inline void hostID(PlayerInput& input, uint8_t id)
+            { input = (input & ~BitMask::HOST_ID) | ((uint64_t(id) << 56) & BitMask::HOST_ID); }
+
+        inline void deviceID(PlayerInput& input, uint8_t id)
+            { input = (input & ~BitMask::DEVICE_ID) | ((uint64_t(id) << 48) & BitMask::DEVICE_ID); }
+
+        inline void actions(PlayerInput& input, uint16_t actions)
+            { input = (input & ~BitMask::ACTIONS) | ((uint64_t(actions) << 32) & BitMask::ACTIONS); }
+
+        inline void timestamp(PlayerInput& input, tick_t tick)
+            { input = (input & ~BitMask::TIMESTAMP) | (tick & BitMask::TIMESTAMP); }
+
+        inline void dashCount(PlayerInput& input, uint64_t count) 
+            { input = (input & ~BitMask::DASH) | ((count << 32) & BitMask::DASH); }
 
         inline void start(PlayerInput& input, bool value)  
             { input = (input & ~BitMask::START) | (value * BitMask::START); }
@@ -51,21 +68,21 @@ namespace input
         inline void cancel(PlayerInput& input, bool value) 
             { input = (input & ~BitMask::CANCEL) | (value * BitMask::CANCEL); }
         
-        inline void horizontalAxis(PlayerInput& input, Sint16 value)
+        inline void horizontalAxis(PlayerInput& input, int16_t value)
         {
-            uint16_t sign = value < 0;
-            value = (value ^ -sign) >> 4;     // get one's complement representation
+            uint64_t sign = value < 0;
+            uint64_t temp = (value ^ -sign) << 28;      // get one's complement representation
             input = (input & ~BitMask::HORIZONTAL_AXIS) 
-                  | (value & BitMask::HORIZONTAL_AXIS_VALUE) 
+                  | (temp & BitMask::HORIZONTAL_AXIS_VALUE) 
                   | (sign * BitMask::HORIZONTAL_AXIS_SIGN);
         }
 
-        inline void verticalAxis(PlayerInput& input, Sint16 value)
+        inline void verticalAxis(PlayerInput& input, int16_t value)
         {
-            uint16_t sign = value < 0;
-            value = (value ^ -sign);          // get one's complement representation
+            uint64_t sign = value < 0;
+            uint64_t temp = (value ^ -sign) << 32;      // get one's complement representation
             input = (input & ~BitMask::VERTICAL_AXIS) 
-                  | (value & BitMask::VERTICAL_AXIS_VALUE) 
+                  | (temp & BitMask::VERTICAL_AXIS_VALUE) 
                   | (sign * BitMask::VERTICAL_AXIS_SIGN);
         }
 
@@ -75,8 +92,20 @@ namespace input
     namespace get
     {
 
+        inline uint8_t hostID(const PlayerInput input)
+            { return (input & BitMask::HOST_ID) >> 56; }
+        
+        inline uint8_t deviceID(const PlayerInput input)
+            { return (input & BitMask::DEVICE_ID) >> 48; }
+        
+        inline uint16_t actions(const PlayerInput input)
+            { return (input & BitMask::ACTIONS) >> 32; }
+        
+        inline tick_t timestamp(const PlayerInput input)
+            { return input & BitMask::TIMESTAMP; }
+
         inline unsigned int dashCount (const PlayerInput input) 
-            { return input & BitMask::DASH; }
+            { return (input & BitMask::DASH) >> 32; }
         
         inline bool start(const PlayerInput input)  
             { return input & BitMask::START; }
@@ -95,102 +124,18 @@ namespace input
                 
         inline float horizontalAxis(const PlayerInput input) 
         {
-            int16_t sign = (input & BitMask::HORIZONTAL_AXIS_SIGN) >> 11;
-            int16_t value = (input & BitMask::HORIZONTAL_AXIS_VALUE) >> 8;
+            int64_t sign = (input & BitMask::HORIZONTAL_AXIS_SIGN) == BitMask::HORIZONTAL_AXIS_SIGN;
+            int64_t value = (input & BitMask::HORIZONTAL_AXIS_VALUE) >> 40;
             return float((value ^ -sign) + sign) / 7.0f;
         }
 
         inline float verticalAxis(const PlayerInput input)
         {
-            int16_t sign = (input & BitMask::VERTICAL_AXIS_SIGN) >> 15;
-            int16_t value = (input & BitMask::VERTICAL_AXIS_VALUE) >> 12;
+            int64_t sign = (input & BitMask::VERTICAL_AXIS_SIGN) == BitMask::VERTICAL_AXIS_SIGN;
+            int64_t value = (input & BitMask::VERTICAL_AXIS_VALUE) >> 44;
             return float((value ^ -sign) + sign) / 7.0f;
         }
 
     };  // end namespace get
-
-
-    class IDevice
-    {
-    public:
-        inline virtual PlayerInput poll() const = 0;
-    };
-
-
-    class Gamepad : public IDevice
-    {
-    public:
-        Gamepad(SDL_Gamepad* gamepad) :
-            _id(SDL_GetGamepadID(gamepad)),
-            _pGamepad(gamepad, SDL_CloseGamepad)
-        {}
-
-        inline SDL_JoystickID getID() const
-            { return _id; }
-
-        inline const char* getName() const
-            { return SDL_GetGamepadName(_pGamepad.get()); }
-
-        inline PlayerInput poll() const
-        {            
-            PlayerInput input = 0;
-            
-            // get action buttons
-            set::start( input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_START));
-            set::shoot( input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_WEST));
-            set::jump(  input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_SOUTH));
-            set::toggle(input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_NORTH));
-            set::cancel(input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_EAST));
-
-            // count dash inputs
-            uint16_t count = 0;
-            count += SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
-            count += SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
-            count += (SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 1000);
-            count += (SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 1000);
-            set::dashCount(input, count);
-
-            // get axis inputs
-            set::horizontalAxis(input, SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX));
-            set::verticalAxis(input, SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY));
-
-            return input;
-        }
-
-    private:
-        const SDL_JoystickID _id;
-        const std::unique_ptr<SDL_Gamepad, decltype(&SDL_CloseGamepad)> _pGamepad;
-    };
-
-
-    class Keyboard : public IDevice
-    {
-    public:
-        inline PlayerInput poll() const
-        {
-            PlayerInput input = 0;
-
-            const bool* keysPressed = SDL_GetKeyboardState(nullptr);
-
-            // get actions
-            set::start( input, keysPressed[SDL_Scancode::SDL_SCANCODE_2]);
-            set::shoot( input, keysPressed[SDL_Scancode::SDL_SCANCODE_3]);
-            set::jump(  input, keysPressed[SDL_Scancode::SDL_SCANCODE_SPACE]);
-            set::toggle(input, keysPressed[SDL_Scancode::SDL_SCANCODE_4]);
-            set::cancel(input, keysPressed[SDL_Scancode::SDL_SCANCODE_5]);
-
-            // count dash inputs
-            uint16_t count = 0;
-            count += keysPressed[SDL_Scancode::SDL_SCANCODE_LSHIFT];
-            count += keysPressed[SDL_Scancode::SDL_SCANCODE_6];
-            set::dashCount(input, count);
-
-            // get axis inputs
-            set::horizontalAxis(input, (keysPressed[SDL_Scancode::SDL_SCANCODE_D] - keysPressed[SDL_Scancode::SDL_SCANCODE_A]) * 32767);
-            set::verticalAxis(input, (keysPressed[SDL_Scancode::SDL_SCANCODE_S] - keysPressed[SDL_Scancode::SDL_SCANCODE_W]) * 32767);
-        
-            return input;
-        }
-    };
 
 };  // end namespace input
