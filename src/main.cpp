@@ -1,9 +1,12 @@
 #include <memory>
+#include <iostream>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include "input/input.hpp"
 #include "SDL3/SDL.h"
+#include "renderer/TextureAtlas.hpp"
 
 class SDLException final : public std::runtime_error
 {
@@ -82,6 +85,11 @@ public:
 		}
 
 		{
+			atlas.load(_renderer.get(), "../resources/assets/Atlas/atlas.bmp", "../resources/assets/Atlas/atlas.xml");
+			atlas.draw(_renderer.get(), "player/bow1", 0.0, 0.0, 10.0f);
+		}
+
+		{
 			char *text;
 			input::PlayerInput playerInput = _keyboard.poll();
 			SDL_asprintf(&text, "%d: %s [%f, %f, %d, %d, %d, %d, %d, %d]", -1, "keyboard",
@@ -133,6 +141,7 @@ private:
 
 	input::Keyboard _keyboard;
 	std::unordered_map<SDL_JoystickID, input::Gamepad> _gamepads;
+	TextureAtlas atlas;
 };
 
 int main()
