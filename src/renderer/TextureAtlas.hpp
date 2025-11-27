@@ -1,5 +1,6 @@
 #pragma once
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_render.h>
 #include <string>
 #include <fstream>
 #include <unordered_map>
@@ -17,6 +18,7 @@ public:
 	bool load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath);
 	void unload();
 	void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f);
+	void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
 	void drawAll(SDL_Renderer *renderer);
 
 private:
@@ -118,12 +120,28 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x
 		std::cerr << "Sprite not found in atlas: " << name << "\n";
 		return;
 	}
-
+	SDL_SetTextureScaleMode(texture, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
 	const SpriteRect &r = it->second;
 	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
-	SDL_FRect dst = {x, y, r.w * scale, r.h * scale};
-
+	SDL_FRect dst = {(float)x, (float)y, (float)r.w * scale, (float)r.h * scale};
 	SDL_RenderTexture(renderer, texture, &src, &dst);
+}
+
+void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect)
+{
+	auto it = atlas.find(name);
+	if (it == atlas.end())
+	{
+		std::cerr << "Sprite not found in atlas: " << name << "\n";
+		return;
+	}
+	SDL_SetTextureScaleMode(texture, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
+	const SpriteRect &r = it->second;
+	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
+
+	// If dstrect is null, draw the sprite at its original size at (0,0)
+	SDL_FRect default_dst = {0.0f, 0.0f, (float)r.w, (float)r.h};
+	SDL_RenderTexture(renderer, texture, &src, dstrect ? dstrect : &default_dst);
 }
 
 void TextureAtlas::drawAll(SDL_Renderer *renderer)
