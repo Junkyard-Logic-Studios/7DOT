@@ -11,14 +11,17 @@ namespace renderer
     class _Renderer
     {
     public:
+        _Renderer(SDL_Window* const window, SDL_Renderer* const renderer) :
+            _sdlWindow(window), _sdlRenderer(renderer)
+        {}
+
         virtual void pushState(ST state) = 0;
-        virtual void render(
-                const std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)>& window,
-                const std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)>& renderer
-            ) = 0;
+        virtual void render() = 0;
     
     protected:
         using State = ST;
+        SDL_Window* const _sdlWindow;
+        SDL_Renderer* const _sdlRenderer;
     };
 
 };  // end namespace renderer

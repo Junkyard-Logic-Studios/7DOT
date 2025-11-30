@@ -6,6 +6,17 @@ project(7DOT)
 
 
 ### BUILD
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(DEBUG TRUE)
+else()
+	set(RELEASE TRUE)
+endif()
+
+# track asset directory
+set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/")
+
+# make defines accessible to source code
+configure_file("configure.hpp.in" "configure.hpp")
 
 # Set the output directory for build objects
 # This makes sure that the dynamic library goes into the build directory automatically

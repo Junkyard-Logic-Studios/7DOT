@@ -1,13 +1,12 @@
 #include "game.hpp"
 
-
-
 int main()
 {
 	try
 	{
 		Game game;
-		while (game.update());
+		while (game.update())
+			;
 	}
 	catch (const std::exception &e)
 	{

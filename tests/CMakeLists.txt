@@ -20,6 +20,7 @@ add_executable(
 target_include_directories(
 	7dot_test PRIVATE
 	"../src"
+  "${CMAKE_BINARY_DIR}"
 )
 target_link_libraries(
   7dot_test
