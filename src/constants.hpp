@@ -1,11 +1,11 @@
 #pragma once
+#include "configure.hpp"
 #include <type_traits>
 #include <inttypes.h>
 #include <chrono>
 using namespace std::chrono_literals;
 
 
-#define DEBUG
 constexpr auto MS_PER_TICK = 10;            // -> 100 ticks per second
 constexpr auto MAX_ROLLBACK = 1s;           // -> maximum rollback of 1 second
 constexpr auto MAX_INPUT_LOOKBACK = 1s;     // -> state computation looks at no inputs older than 1 second

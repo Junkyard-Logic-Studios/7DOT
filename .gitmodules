@@ -4,3 +4,6 @@
 [submodule "external/SDL"]
 	path = external/SDL
 	url = https://github.com/libsdl-org/SDL
+[submodule "assets"]
+	path = assets
+	url = https://github.com/Junkyard-Logic-Studios/7DOT-assets-original.git

@@ -27,7 +27,7 @@ namespace input
         {
             tick_t timestamp = get::timestamp(input);
 
-        #ifdef DEBUG
+        #if DEBUG == true
             if (timestamp + INPUT_BUFFER_SIZE <= _latest)
                 throw std::invalid_argument("timestamp too old\n"\
                     "timestamp: " + std::to_string(timestamp) +
@@ -60,7 +60,7 @@ namespace input
 
         inline PlayerInput operator[](tick_t timestamp) const
         {
-        #ifdef DEBUG
+        #if DEBUG == true
             if (timestamp + INPUT_BUFFER_SIZE <= _latest)
                 throw std::invalid_argument("timestamp too old\n"\
                     "timestamp: " + std::to_string(timestamp) +

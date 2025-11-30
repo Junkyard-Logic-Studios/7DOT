@@ -3,6 +3,8 @@
 #include "../core/mainMenuScene.hpp"
 #include "TextureAtlas.hpp"
 
+
+
 namespace renderer
 {
 
@@ -12,14 +14,12 @@ namespace renderer
 		MainMenuRenderer(SDL_Window* const window, SDL_Renderer* const renderer) :
 			_Renderer(window, renderer)
 		{
-			_atlas.load(_sdlRenderer, 
-				"../resources/assets/Atlas/bgAtlas.bmp", 
-				"../resources/assets/Atlas/bgAtlas.xml");
+			_bgAtlas.load(_sdlRenderer, ASSET_DIR"Atlas/bgAtlas.bmp", ASSET_DIR"Atlas/bgAtlas.xml");
 		}
 
 		~MainMenuRenderer()
 		{
-			_atlas.unload();
+			_bgAtlas.unload();
 		}
 
 		void pushState(State state)
@@ -56,12 +56,12 @@ namespace renderer
 			case opt::TITLE:
 				if (_state.selected == opt::TITLE)
 				{
-					_atlas.draw(_sdlRenderer, "distantSky", &screenRect);
+					_bgAtlas.draw(_sdlRenderer, "distantSky", &screenRect);
 					fWriteLine("start");
 				}
 				else
 				{
-					_atlas.draw(_sdlRenderer, "capitolBack", &screenRect);
+					_bgAtlas.draw(_sdlRenderer, "capitolBack", &screenRect);
 					fWriteLine("PVP", _state.selected == opt::PVP);
 					fWriteLine("Session Stats", _state.selected == opt::SESSION_STATS);
 					fWriteLine("Options", _state.selected == opt::OPTIONS);
@@ -109,7 +109,7 @@ namespace renderer
 		}
 
 	private:
-		TextureAtlas _atlas;
+		TextureAtlas _bgAtlas;
 		State _state;
 	};
 
