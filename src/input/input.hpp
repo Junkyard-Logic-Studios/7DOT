@@ -10,11 +10,11 @@ namespace input
     using PlayerInput = uint64_t;
 
 
-    enum BitMask : uint64_t
+    enum BitMask : PlayerInput
     {
-        HOST_ID               = 0xFF00'0000'0000'0000,
+        RESERVED              = 0xFFF0'0000'0000'0000,
 
-        DEVICE_ID             = 0x00FF'0000'0000'0000,
+        DEVICE_ID             = 0x000F'0000'0000'0000,
 
         ACTIONS               = 0x0000'FFFF'0000'0000,
 
@@ -37,9 +37,6 @@ namespace input
 
     namespace set
     {
-
-        inline void hostID(PlayerInput& input, uint8_t id)
-            { input = (input & ~BitMask::HOST_ID) | ((uint64_t(id) << 56) & BitMask::HOST_ID); }
 
         inline void deviceID(PlayerInput& input, uint8_t id)
             { input = (input & ~BitMask::DEVICE_ID) | ((uint64_t(id) << 48) & BitMask::DEVICE_ID); }
@@ -70,8 +67,8 @@ namespace input
         
         inline void horizontalAxis(PlayerInput& input, int16_t value)
         {
-            uint64_t sign = value < 0;
-            uint64_t temp = (value ^ -sign) << 28;      // get one's complement representation
+            PlayerInput sign = value < 0;
+            PlayerInput temp = (value ^ -sign) << 28;       // get one's complement representation
             input = (input & ~BitMask::HORIZONTAL_AXIS) 
                   | (temp & BitMask::HORIZONTAL_AXIS_VALUE) 
                   | (sign * BitMask::HORIZONTAL_AXIS_SIGN);
@@ -79,8 +76,8 @@ namespace input
 
         inline void verticalAxis(PlayerInput& input, int16_t value)
         {
-            uint64_t sign = value < 0;
-            uint64_t temp = (value ^ -sign) << 32;      // get one's complement representation
+            PlayerInput sign = value < 0;
+            PlayerInput temp = (value ^ -sign) << 32;       // get one's complement representation
             input = (input & ~BitMask::VERTICAL_AXIS) 
                   | (temp & BitMask::VERTICAL_AXIS_VALUE) 
                   | (sign * BitMask::VERTICAL_AXIS_SIGN);
@@ -92,9 +89,6 @@ namespace input
     namespace get
     {
 
-        inline uint8_t hostID(const PlayerInput input)
-            { return (input & BitMask::HOST_ID) >> 56; }
-        
         inline uint8_t deviceID(const PlayerInput input)
             { return (input & BitMask::DEVICE_ID) >> 48; }
         

@@ -7,6 +7,7 @@
 #include "SDLException.hpp"
 #include "constants.hpp"
 #include "input/iDevice.hpp"
+#include "net/connection.hpp"
 #include "core/scene.hpp"
 #include "core/mainMenuScene.hpp"
 #include "core/selectionScene.hpp"
@@ -55,7 +56,7 @@ public:
         _activeScene->activate();
 
         // initialize networking
-        NET_Init();
+        _connectionManager = std::make_unique<net::ConnectionManager>();
 
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
@@ -70,7 +71,9 @@ public:
     ~Game()
     {
         _activeScene->deactivate();
-        NET_Quit();
+        _connectionManager.reset();
+        _renderer.reset();
+        _window.reset();
         SDL_Quit();
     }
 
@@ -157,4 +160,7 @@ private:
     // input devices
     input::Keyboard _keyboard;
     std::unordered_map<SDL_JoystickID, input::Gamepad> _gamepads;
+
+    // networking
+    std::unique_ptr<net::ConnectionManager> _connectionManager{nullptr};
 };
