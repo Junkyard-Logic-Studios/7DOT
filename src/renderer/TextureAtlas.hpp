@@ -17,7 +17,7 @@ class TextureAtlas
 public:
 	bool load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath);
 	void unload();
-	void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f);
+	void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
 	void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
 
 private:
@@ -113,7 +113,7 @@ void TextureAtlas::unload()
 	atlas.clear();
 }
 
-void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale)
+void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale, bool fliphoriz)
 {
 	auto it = atlas.find(name);
 	if (it == atlas.end())
@@ -121,9 +121,15 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x
 		std::cerr << "Sprite not found in atlas: " << name << "\n";
 		return;
 	}
+	int flip = 1;
+	if (fliphoriz)
+	{
+		flip = -1;
+	}
+
 	const SpriteRect &r = it->second;
 	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
-	SDL_FRect dst = {(float)x, (float)y, (float)r.w * scale, (float)r.h * scale};
+	SDL_FRect dst = {(float)x, (float)y, (float)r.w * scale * flip, (float)r.h * scale};
 	SDL_RenderTexture(renderer, texture, &src, &dst);
 }
 

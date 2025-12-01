@@ -3,23 +3,22 @@
 #include "../core/mainMenuScene.hpp"
 #include "TextureAtlas.hpp"
 
-
-
 namespace renderer
 {
 
 	class MainMenuRenderer : public _Renderer<core::MainMenuScene::State>
 	{
 	public:
-		MainMenuRenderer(SDL_Window* const window, SDL_Renderer* const renderer) :
-			_Renderer(window, renderer)
+		MainMenuRenderer(SDL_Window *const window, SDL_Renderer *const renderer) : _Renderer(window, renderer)
 		{
-			_bgAtlas.load(_sdlRenderer, ASSET_DIR"Atlas/bgAtlas.bmp", ASSET_DIR"Atlas/bgAtlas.xml");
+			_bgAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/bgAtlas.bmp", ASSET_DIR "Atlas/bgAtlas.xml");
+			_menuAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/menuAtlas.bmp", ASSET_DIR "Atlas/menuAtlas.xml");
 		}
 
 		~MainMenuRenderer()
 		{
 			_bgAtlas.unload();
+			_menuAtlas.unload();
 		}
 
 		void pushState(State state)
@@ -44,7 +43,7 @@ namespace renderer
 			{
 				x = (winw - SDL_strlen(text) * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE) / 2.0f;
 				if (cursor)
-					SDL_RenderDebugText(_sdlRenderer, x - SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0, y, ">");
+					_menuAtlas.draw(_sdlRenderer, "title/darkWorld/arrow", winw / 2 + 157, y - 21, 1.0f, true);
 				SDL_RenderDebugText(_sdlRenderer, x, y, text);
 				y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
 			};
@@ -61,7 +60,7 @@ namespace renderer
 				}
 				else
 				{
-					_bgAtlas.draw(_sdlRenderer, "capitolBack", &screenRect);
+					_bgAtlas.draw(_sdlRenderer, "CavesBack", &screenRect);
 					fWriteLine("PVP", _state.selected == opt::PVP);
 					fWriteLine("Session Stats", _state.selected == opt::SESSION_STATS);
 					fWriteLine("Options", _state.selected == opt::OPTIONS);
@@ -110,6 +109,7 @@ namespace renderer
 
 	private:
 		TextureAtlas _bgAtlas;
+		TextureAtlas _menuAtlas;
 		State _state;
 	};
 
