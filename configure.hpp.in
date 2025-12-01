@@ -1,0 +1,4 @@
+#pragma once
+#cmakedefine01 DEBUG
+#cmakedefine01 RELEASE
+#cmakedefine ASSET_DIR "${ASSET_DIR}"

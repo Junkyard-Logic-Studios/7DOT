@@ -19,7 +19,6 @@ public:
 	void unload();
 	void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f);
 	void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
-	void drawAll(SDL_Renderer *renderer);
 
 private:
 	SDL_Texture *texture = nullptr;
@@ -142,11 +141,4 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, const S
 	// If dstrect is null, draw the sprite at its original size at (0,0)
 	SDL_FRect default_dst = {0.0f, 0.0f, (float)r.w, (float)r.h};
 	SDL_RenderTexture(renderer, texture, &src, dstrect ? dstrect : &default_dst);
-}
-
-void TextureAtlas::drawAll(SDL_Renderer *renderer)
-{
-	for (auto [name, rect] : atlas)
-	{
-	}
 }

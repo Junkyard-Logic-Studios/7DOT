@@ -154,7 +154,7 @@ TEST(InputBufferTest, InsertTooOld)
     set::actions(pin, 0xB);
 
     // check
-#ifdef DEBUG
+#if DEBUG == true
     EXPECT_THROW(inputBuffer.insert(pin), std::invalid_argument);
 #else
     EXPECT_NO_THROW(inputBuffer.insert(pin));
@@ -203,7 +203,7 @@ TEST(InputBufferTest, ReadTooOld)
     inputBuffer.insert(pin);
 
     // check
-#ifdef DEBUG
+#if DEBUG == true
     EXPECT_THROW(inputBuffer[0], std::invalid_argument);
 #else
     EXPECT_NO_THROW(inputBuffer[0]);

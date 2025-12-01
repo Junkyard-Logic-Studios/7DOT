@@ -1,5 +1,5 @@
 # 7DOT
-Side-project which will inevitably be abandoned sooner or later.
+Would be a real shame if this side-project were abandoned.
 
 - [Clone](#clone)
 - [Build](#build)
@@ -29,7 +29,7 @@ mkdir build && cd build
 
 Then configure the cmake project:
 ```
-cmake .. -DBUILD_TESTS=<ON|OFF>
+cmake .. -DCMAKE_BUILD_TYPE=<Debug|Release> -DBUILD_TESTS=<ON|OFF>
 ```
 
 Finally build with:

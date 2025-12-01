@@ -7,14 +7,18 @@
 
 core::MainMenuScene::MainMenuScene(Game& game) :
     _Scene(game)
+{}
+
+void core::MainMenuScene::activate() 
 {
-    auto* renderer = new renderer::MainMenuRenderer();
+    auto* renderer = new renderer::MainMenuRenderer(_game.getWindow().get(), _game.getRenderer().get());
     _renderer.reset(static_cast<renderer::_Renderer<MainMenuScene::State>*>(renderer));
 }
 
-void core::MainMenuScene::activate() {}
-
-void core::MainMenuScene::deactivate() {}
+void core::MainMenuScene::deactivate() 
+{
+    _renderer.reset(nullptr);
+}
 
 core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
 {
@@ -140,7 +144,7 @@ core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
     }
 
     _renderer->pushState(_state);
-    _renderer->render(_game.getWindow(), _game.getRenderer());
+    _renderer->render();
 
     // sleep till next game tick to avoid inputs beeing applied twice
     std::this_thread::sleep_until(Game::nextTickTime(currentTick));
