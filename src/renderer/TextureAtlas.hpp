@@ -99,6 +99,8 @@ bool TextureAtlas::load(SDL_Renderer *renderer, const std::string &imagePath, co
 		std::cerr << "Warning: No sprites found in " << xmlPath << "\n";
 	}
 
+	SDL_SetTextureScaleMode(texture, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
+
 	return true;
 }
 
@@ -120,7 +122,6 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x
 		std::cerr << "Sprite not found in atlas: " << name << "\n";
 		return;
 	}
-	SDL_SetTextureScaleMode(texture, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
 	const SpriteRect &r = it->second;
 	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
 	SDL_FRect dst = {(float)x, (float)y, (float)r.w * scale, (float)r.h * scale};
@@ -135,7 +136,6 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, const S
 		std::cerr << "Sprite not found in atlas: " << name << "\n";
 		return;
 	}
-	SDL_SetTextureScaleMode(texture, SDL_ScaleMode::SDL_SCALEMODE_PIXELART);
 	const SpriteRect &r = it->second;
 	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
 
