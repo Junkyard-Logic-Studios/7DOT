@@ -5,7 +5,7 @@
 #include "SDL3/SDL.h"
 #include "SDLException.hpp"
 #include "constants.hpp"
-#include "input/iDevice.hpp"
+#include "input/deviceManager.hpp"
 #include "core/scene.hpp"
 #include "core/mainMenuScene.hpp"
 #include "core/selectionScene.hpp"
@@ -80,26 +80,18 @@ public:
                 return false;
 
             case SDL_EVENT_GAMEPAD_ADDED:
-                if (_gamepads.find(event.gdevice.which) == _gamepads.end())
-                {
-                    auto *pGamepad = SDL_OpenGamepad(event.gdevice.which);
-                    if (pGamepad)
-                        _gamepads.emplace(event.gdevice.which, pGamepad);
-                }
+                _deviceManager.addGamepad(event.gdevice.which);
                 break;
 
             case SDL_EVENT_GAMEPAD_REMOVED:
-                auto it = _gamepads.find(event.gdevice.which);
-                if (it != _gamepads.end())
-                    _gamepads.erase(it);
+                _deviceManager.removeGamepad(event.gdevice.which);
                 break;
             }
         }
 
         // poll input devices
-        _keyboard.poll();
-        for (auto& [_, gamepad] : _gamepads)
-            gamepad.poll();
+        for (auto* d : _deviceManager.getAll())
+            d->poll();
 
         // update active scene
         const auto switchScene = [&](core::_Scene& next) {
@@ -128,15 +120,8 @@ public:
     const std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)>& getRenderer() const
         { return _renderer; }
 
-    std::vector<input::IDevice*> getInputDevices()
-    {
-        std::vector<input::IDevice*> v = 
-            { static_cast<input::IDevice*>(&_keyboard) };
-        for (auto& [_, gamepad] : _gamepads)
-            v.push_back(static_cast<input::IDevice*>(&gamepad));
-    
-        return v;
-    }
+    const input::DeviceManager& getInputDeviceManager() const
+        { return _deviceManager; }
 
 private:
     // SDL handles
@@ -150,6 +135,5 @@ private:
     core::_Scene*        _activeScene;
 
     // input devices
-    input::Keyboard _keyboard;
-    std::unordered_map<SDL_JoystickID, input::Gamepad> _gamepads;
+    input::DeviceManager _deviceManager;
 };

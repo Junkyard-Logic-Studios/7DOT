@@ -50,7 +50,7 @@ core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
 
     // check latest inputs from all devices
     _state.inputDevicePolls.clear();
-    for (auto* pDevice : _game.getInputDevices())
+    for (auto* pDevice : _game.getInputDeviceManager().getAll())
     {
         input::PlayerInput previousInput = pDevice->getInput(currentTick - 1);
         input::PlayerInput currentInput = pDevice->getInput(currentTick);
