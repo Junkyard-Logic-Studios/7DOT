@@ -1,6 +1,7 @@
 #pragma once
 #include "scene.hpp"
 #include "../renderer/renderer.hpp"
+#include "fightSelection.hpp"
 
 
 
@@ -12,16 +13,23 @@ namespace core
     class SelectionScene : public _Scene
     {
     public:
-        struct State {};
+        enum NavigationOptions : uint32_t
+        {
+            CHARACTERS,
+            MODE,
+            STAGE,
+        };
 
-        inline SelectionScene(Game& game) :
-            _Scene(game)
-        {}
+        struct State 
+        {
+            FightSelection fightSelection;
+            NavigationOptions currentLevel = CHARACTERS;
+        };
 
-        inline void activate() {}
-        inline void deactivate() {}
-        inline UpdateReturnStatus update() 
-            { return SWITCH_MAINMENU; }
+        SelectionScene(Game& game);
+        void activate();
+        void deactivate();
+        UpdateReturnStatus update();
 
     private:
         std::unique_ptr<renderer::_Renderer<SelectionScene::State>> _renderer;

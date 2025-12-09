@@ -49,8 +49,13 @@ public:
         _window.reset(window);
         _renderer.reset(renderer);
 
+        // create scenes
+        _mainMenuScene  = std::make_unique<core::MainMenuScene>(*this);
+        _selectionScene = std::make_unique<core::SelectionScene>(*this);
+        _fightScene     = std::make_unique<core::FightScene>(*this);
+
         // pick main menu scene as first active scene
-        _activeScene = static_cast<core::_Scene*>(&_mainMenuScene);
+        _activeScene = static_cast<core::_Scene*>(_mainMenuScene.get());
         _activeScene->activate();
 
         // show window once initialization is complete
@@ -94,19 +99,19 @@ public:
             d->poll();
 
         // update active scene
-        const auto switchScene = [&](core::_Scene& next) {
+        const auto switchScene = [&](core::_Scene* next) {
             _activeScene->deactivate();
-            _activeScene = &next;
+            _activeScene = next;
             _activeScene->activate();
         };
         switch (_activeScene->update())
         {
         case core::_Scene::UpdateReturnStatus::SWITCH_MAINMENU:
-            switchScene(_mainMenuScene); break;
+            switchScene(_mainMenuScene.get()); break;
         case core::_Scene::UpdateReturnStatus::SWITCH_SELECTION:
-            switchScene(_selectionScene); break;
+            switchScene(_selectionScene.get()); break;
         case core::_Scene::UpdateReturnStatus::SWITCH_FIGHT:
-            switchScene(_fightScene); break;
+            switchScene(_fightScene.get()); break;
         case core::_Scene::UpdateReturnStatus::QUIT:
             return false;
         }
@@ -129,10 +134,10 @@ private:
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer{nullptr, SDL_DestroyRenderer};
 
     // game scenes
-    core::MainMenuScene  _mainMenuScene  = core::MainMenuScene(*this);
-    core::SelectionScene _selectionScene = core::SelectionScene(*this);
-    core::FightScene     _fightScene     = core::FightScene(*this);
-    core::_Scene*        _activeScene;
+    std::unique_ptr<core::MainMenuScene>  _mainMenuScene;
+    std::unique_ptr<core::SelectionScene> _selectionScene;
+    std::unique_ptr<core::FightScene>     _fightScene;
+    core::_Scene* _activeScene;
 
     // input devices
     input::DeviceManager _deviceManager;

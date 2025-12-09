@@ -9,7 +9,8 @@ namespace renderer
 	class MainMenuRenderer : public _Renderer<core::MainMenuScene::State>
 	{
 	public:
-		MainMenuRenderer(SDL_Window *const window, SDL_Renderer *const renderer) : _Renderer(window, renderer)
+		MainMenuRenderer(SDL_Window *const window, SDL_Renderer *const renderer) : 
+			_Renderer(window, renderer)
 		{
 			_bgAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/bgAtlas.bmp", ASSET_DIR "Atlas/bgAtlas.xml");
 			_menuAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/menuAtlas.bmp", ASSET_DIR "Atlas/menuAtlas.xml");
