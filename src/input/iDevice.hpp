@@ -1,5 +1,8 @@
 #pragma once
 #include <memory>
+#include <mutex>
+#include <thread>
+#include <atomic>
 #include "SDL3/SDL_gamepad.h"
 #include "SDL3/SDL_keyboard.h"
 #include "SDL3/SDL_scancode.h"
@@ -15,12 +18,17 @@ namespace input
     class IDevice
     {
     public:
+        IDevice();
+        ~IDevice();
         inline virtual const char* getName() const = 0;
         void poll();
         PlayerInput getInput(tick_t tick) const;
 
     protected:
         InputBuffer _inputBuffer;
+        std::mutex _inputBufferMutex;
+        std::unique_ptr<std::thread> _pollingThread;
+        std::atomic<bool> _pollingStop = false;
         uint16_t _lastActions = 0;
 
         inline virtual PlayerInput _poll() const = 0;

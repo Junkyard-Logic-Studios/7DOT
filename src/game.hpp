@@ -89,10 +89,6 @@ public:
             }
         }
 
-        // poll input devices
-        for (auto* d : _deviceManager.getAll())
-            d->poll();
-
         // update active scene
         const auto switchScene = [&](core::_Scene& next) {
             _activeScene->deactivate();

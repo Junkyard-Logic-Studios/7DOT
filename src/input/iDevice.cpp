@@ -10,6 +10,8 @@ void input::IDevice::poll()
     PlayerInput input = _poll();
     if (get::actions(input) != _lastActions)
     {
+        const std::lock_guard<std::mutex> lock(_inputBufferMutex);
+
         set::timestamp(input, Game::currentTick() + std::chrono::duration_cast<std::chrono::ticks>(VIRTUAL_INPUT_LAG).count());
         _inputBuffer.insert(input);
         _lastActions = get::actions(input);
@@ -19,4 +21,23 @@ void input::IDevice::poll()
 input::PlayerInput input::IDevice::getInput(tick_t tick) const
 {
     return _inputBuffer[tick];
+}
+
+input::IDevice::IDevice()
+{
+    _pollingThread = std::make_unique<std::thread>(
+        [&]{
+            while (!this->_pollingStop)
+            {
+                auto t = Game::currentTick();
+                this->poll();
+                std::this_thread::sleep_until(Game::nextTickTime(t));
+            }
+        });
+}
+
+input::IDevice::~IDevice()
+{
+    _pollingStop = true;
+    _pollingThread->join();
 }
