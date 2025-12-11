@@ -15,35 +15,42 @@ namespace input
     class IDevice
     {
     public:
+        inline IDevice(uint8_t id) : 
+            _id(id) {}
+        inline uint8_t getID() const
+            { return _id; }
         inline virtual const char* getName() const = 0;
         void poll();
         PlayerInput getInput(tick_t tick) const;
 
     protected:
+        inline virtual PlayerInput _poll() const = 0;
+    
+    private:
+        const uint8_t _id;
         InputBuffer _inputBuffer;
         uint16_t _lastActions = 0;
-
-        inline virtual PlayerInput _poll() const = 0;
     };
 
 
     class Gamepad : public IDevice
     {
     public:
-        inline Gamepad(SDL_Gamepad* gamepad) :
-            _id(SDL_GetGamepadID(gamepad)),
+        inline Gamepad(uint8_t id, SDL_Gamepad* gamepad) :
+            IDevice(id),
+            _joystickID(SDL_GetGamepadID(gamepad)),
             _pGamepad(gamepad, SDL_CloseGamepad)
         {}
 
-        inline SDL_JoystickID getID() const
-            { return _id; }
+        inline SDL_JoystickID getJoystickID() const
+            { return _joystickID; }
 
         inline const char* getName() const
             { return SDL_GetGamepadName(_pGamepad.get()); }
 
     protected:
         inline PlayerInput _poll() const
-        {            
+        {
             PlayerInput input = 0;
             
             // get action buttons
@@ -69,7 +76,7 @@ namespace input
         }
 
     private:
-        const SDL_JoystickID _id;
+        const SDL_JoystickID _joystickID;
         const std::unique_ptr<SDL_Gamepad, decltype(&SDL_CloseGamepad)> _pGamepad;
     };
 
@@ -77,6 +84,8 @@ namespace input
     class Keyboard : public IDevice
     {
     public:
+        inline Keyboard(uint8_t id) : 
+            IDevice(id) {}
         inline const char* getName() const
             { return "keyboard"; }
 

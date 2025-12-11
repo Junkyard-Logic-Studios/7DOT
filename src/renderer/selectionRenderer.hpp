@@ -45,6 +45,18 @@ namespace renderer
             {
             case opt::CHARACTERS:
                 fWriteLine("Characters");
+                for (auto& player : _state.fightSelection.players)
+                {
+                    char* text;
+                    SDL_asprintf(&text, "device (host: %d, local: %d)  -  character: < %u >",
+                        player.hostID, player.deviceID, player.character);
+                    x = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
+					SDL_RenderDebugText(_sdlRenderer, x, y, text);
+					y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0f;
+
+					SDL_free(text);
+                }
+                y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
                 break;
             
             case opt::MODE:
