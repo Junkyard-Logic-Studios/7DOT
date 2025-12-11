@@ -11,6 +11,7 @@ void input::IDevice::poll()
     if (get::actions(input) != _lastActions)
     {
         set::timestamp(input, Game::currentTick() + std::chrono::duration_cast<std::chrono::ticks>(VIRTUAL_INPUT_LAG).count());
+        set::deviceID(input, _id);
         _inputBuffer.insert(input);
         _lastActions = get::actions(input);
     }

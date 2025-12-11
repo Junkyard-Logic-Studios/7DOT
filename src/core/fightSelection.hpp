@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-
+#include "player.hpp"
 
 
 namespace core
@@ -8,7 +8,7 @@ namespace core
 
     struct FightSelection
     {
-        struct Player {};
+
         std::vector<Player> players;
 
         enum class Mode
