@@ -18,6 +18,7 @@ namespace core
         {
             CHARACTERS,
             MODE,
+            TEAM,
             STAGE,
         };
 
@@ -38,6 +39,7 @@ namespace core
 
         bool updateCharacterSelection(State& state, tick_t tick);
         void updateModeSelection(State& state, tick_t tick);
+        void updateTeamSelection(State& state, tick_t tick);
         bool updateStageSelection(State& state, tick_t tick);
     };
 

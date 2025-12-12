@@ -15,7 +15,9 @@ namespace core
         {
             LAST_MAN_STANDING,
             HEAD_HUNTERS,
-            TEAM,
+            TEAM_2,
+            TEAM_4,
+            MAX_ENUM
         } 
         mode = Mode::LAST_MAN_STANDING;
 
@@ -24,6 +26,7 @@ namespace core
             TOWER,
             CAVE,
             CASTLE,
+            MAX_ENUM
         }
         stage = Stage::TOWER;
     };

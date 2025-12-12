@@ -2,6 +2,7 @@
 #include <vector>
 #include <unordered_map>
 #include "iDevice.hpp"
+#include "../core/player.hpp"
 
 
 
@@ -55,6 +56,9 @@ namespace input
 
         inline const IDevice* get(uint8_t hostID, uint8_t deviceID) const
             { return _localDevices[deviceID]; }     // TODO: consider also host ID
+
+        inline const IDevice* get(const core::Player& player) const
+            { return get(player.hostID, player.deviceID); }
 
         inline const std::vector<IDevice*>& getAll() const
             { return _devices; }
