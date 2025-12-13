@@ -25,12 +25,13 @@ void core::SelectionScene::deactivate()
 core::_Scene::UpdateReturnStatus core::SelectionScene::update() 
 { 
     tick_t currentTick = Game::currentTick();
+    UpdateReturnStatus returnStatus = UpdateReturnStatus::STAY;
 
     switch (_stateBuffer[0].currentLevel)
     {
     case CHARACTERS: 
         if(updateCharacterSelection(_stateBuffer[0], currentTick))
-            return UpdateReturnStatus::SWITCH_MAINMENU;
+            returnStatus = UpdateReturnStatus::SWITCH_MAINMENU;
         break;
     
     case MODE:
@@ -43,7 +44,7 @@ core::_Scene::UpdateReturnStatus core::SelectionScene::update()
 
     case STAGE:
         if(updateStageSelection(_stateBuffer[0], currentTick))
-            return UpdateReturnStatus::SWITCH_FIGHT;
+            returnStatus = UpdateReturnStatus::SWITCH_FIGHT;
         break;
     };
 
@@ -53,7 +54,7 @@ core::_Scene::UpdateReturnStatus core::SelectionScene::update()
     // sleep till next game tick to avoid inputs beeing applied twice
     std::this_thread::sleep_until(Game::nextTickTime(currentTick));
 
-    return UpdateReturnStatus::STAY;
+    return returnStatus;
 }
 
 bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
@@ -200,5 +201,39 @@ void core::SelectionScene::updateTeamSelection(State& state, tick_t tick)
 
 bool core::SelectionScene::updateStageSelection(State& state, tick_t tick)
 {
+    for (auto& player : state.fightSelection.players)
+    {
+        auto* pDevice = _game.getInputDeviceManager().get(player);
+        if (!pDevice) continue;
+        
+        input::PlayerInput previousInput = pDevice->getInput(tick - 1);
+        input::PlayerInput currentInput = pDevice->getInput(tick);
+        input::PlayerInput toggle = ~previousInput & currentInput;
+
+        // change stage
+        float previousHAxis = input::get::horizontalAxis(previousInput);
+        float currentHAxis = input::get::horizontalAxis(currentInput);
+        if (previousHAxis == 0.0f && currentHAxis != 0.0f)
+        {
+            int ns = (int)state.fightSelection.stage + (currentHAxis > 0.0f ? 1 : -1);
+            ns = (ns + (int)FightSelection::Stage::MAX_ENUM) % (int)FightSelection::Stage::MAX_ENUM;
+            state.fightSelection.stage = FightSelection::Stage(ns);
+        }
+
+        // confirm stage selection
+        if (input::get::jump(toggle))
+            return true;
+
+        // quit to mode/team selection
+        if (input::get::cancel(toggle))
+        {
+            state.currentLevel = 
+                state.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
+                state.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
+                TEAM : MODE;
+            return false;
+        }
+    }
+
     return false;
 }

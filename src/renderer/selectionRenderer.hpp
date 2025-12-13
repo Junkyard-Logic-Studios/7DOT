@@ -105,6 +105,15 @@ namespace renderer
 
             case opt::STAGE:
                 fWriteLine("Stage");
+                switch (_state.fightSelection.stage)
+                {
+                case core::FightSelection::Stage::TOWER:
+                    fWriteLine("< Tower >"); break;
+                case core::FightSelection::Stage::CAVE:
+                    fWriteLine("< Cave >"); break;
+                case core::FightSelection::Stage::CASTLE:
+                    fWriteLine("< Castle >"); break;
+                }
                 break;
             }
 
