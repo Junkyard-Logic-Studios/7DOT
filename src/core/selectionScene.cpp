@@ -11,9 +11,6 @@ core::SelectionScene::SelectionScene(Game& game) :
 {
     auto* renderer = new renderer::SelectionRenderer(_game.getWindow().get(), _game.getRenderer().get());
     _renderer.reset(static_cast<renderer::_Renderer<SelectionScene::State>*>(renderer));
-
-    // TODO: replace with properly sized static array
-    _stateBuffer = new State[1];
 }
 
 void core::SelectionScene::activate()

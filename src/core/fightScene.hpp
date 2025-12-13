@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include "scene.hpp"
 #include "../renderer/renderer.hpp"
 #include "stage.hpp"
@@ -35,7 +36,7 @@ namespace core
 
     private:
         std::unique_ptr<renderer::_Renderer<FightScene::State>> _renderer;
-        State* _stateBuffer;
+        std::array<State, STATE_BUFFER_SIZE> _stateBuffer;
 
         Stage _stage;
         std::vector<Archer> _archers;
