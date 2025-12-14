@@ -35,7 +35,8 @@ public:
         return startTime() + duration_cast<system_clock::duration>(ticks(tick + 1));
     }
 
-    Game()
+    Game() :
+        _deviceManager(0)
     {
         // init SDL
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
@@ -95,8 +96,8 @@ public:
         }
 
         // poll input devices
-        for (auto* d : _deviceManager.getAll())
-            d->poll();
+        for (auto [_, pDevice] : _deviceManager)
+            pDevice->poll();
 
         // update active scene
         const auto switchScene = [&](core::_Scene* next) {

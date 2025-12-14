@@ -56,7 +56,7 @@ core::_Scene::UpdateReturnStatus core::SelectionScene::update()
 
 bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
 {
-    for (auto* pDevice : _game.getInputDeviceManager().getAll())
+    for (auto [hostID, pDevice] : _game.getInputDeviceManager())
     {
         input::PlayerInput previousInput = pDevice->getInput(tick - 1);
         input::PlayerInput currentInput = pDevice->getInput(tick);
@@ -64,7 +64,7 @@ bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
 
         auto player = state.fightSelection.players.begin();
         for (; player != state.fightSelection.players.end(); player++)
-            if (player->deviceID == pDevice->getID())         // TODO: check also for host ID
+            if (player->hostID == hostID && player->deviceID == pDevice->getID())
                 break;
         
         // device input influences player
@@ -96,7 +96,8 @@ bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
         else if (input::get::jump(toggle))
         {
             Player player;
-            player.deviceID = pDevice->getID();         // TODO: set also host ID
+            player.hostID = hostID;
+            player.deviceID = pDevice->getID();
             state.fightSelection.players.push_back(player);    
         }
         // quit to main menu
