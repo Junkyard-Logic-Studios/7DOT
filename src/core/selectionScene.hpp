@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include "scene.hpp"
+#include "sceneStateBuffer.hpp"
 #include "../constants.hpp"
 #include "../renderer/renderer.hpp"
 #include "fightSelection.hpp"
@@ -36,12 +37,12 @@ namespace core
 
     private:
         std::unique_ptr<renderer::_Renderer<SelectionScene::State>> _renderer;
-        std::array<State, STATE_BUFFER_SIZE> _stateBuffer;
+        SceneStateBuffer<State> _stateBuffer;
 
-        bool updateCharacterSelection(State& state, tick_t tick);
-        void updateModeSelection(State& state, tick_t tick);
-        void updateTeamSelection(State& state, tick_t tick);
-        bool updateStageSelection(State& state, tick_t tick);
+        bool updateCharacterSelection(const State& cstate, State& nstate, tick_t tick);
+        void updateModeSelection(const State& cstate, State& nstate, tick_t tick);
+        void updateTeamSelection(const State& cstate, State& nstate, tick_t tick);
+        bool updateStageSelection(const State& cstate, State& nstate, tick_t tick);
     };
 
 };  // end namespace core

@@ -14,7 +14,9 @@ core::SelectionScene::SelectionScene(Game& game) :
 }
 
 void core::SelectionScene::activate()
-{}
+{
+    _stateBuffer.setLatestValidTick(Game::currentTick());
+}
 
 void core::SelectionScene::deactivate()
 {}
@@ -22,30 +24,40 @@ void core::SelectionScene::deactivate()
 core::_Scene::UpdateReturnStatus core::SelectionScene::update() 
 { 
     tick_t currentTick = Game::currentTick();
+    tick_t latestValidTick = _stateBuffer.getLatestValidTick();
     UpdateReturnStatus returnStatus = UpdateReturnStatus::STAY;
 
-    switch (_stateBuffer[0].currentLevel)
+    while (latestValidTick < currentTick)
     {
-    case CHARACTERS: 
-        if(updateCharacterSelection(_stateBuffer[0], currentTick))
-            returnStatus = UpdateReturnStatus::SWITCH_MAINMENU;
-        break;
-    
-    case MODE:
-        updateModeSelection(_stateBuffer[0], currentTick);
-        break;
-    
-    case TEAM:
-        updateTeamSelection(_stateBuffer[0], currentTick);
-        break;
+        // cstate: current state 
+        // nstate: next state to be calculated from current state
+        // tick: tick for nstate
+        auto [cstate, nstate, tick] = _stateBuffer.calculateNextValidState();
+        latestValidTick = tick;
 
-    case STAGE:
-        if(updateStageSelection(_stateBuffer[0], currentTick))
-            returnStatus = UpdateReturnStatus::SWITCH_FIGHT;
-        break;
-    };
-
-    _renderer->pushState(_stateBuffer[0]);
+        switch (cstate.currentLevel)
+        {
+        case CHARACTERS: 
+            if(updateCharacterSelection(cstate, nstate, tick))
+                returnStatus = UpdateReturnStatus::SWITCH_MAINMENU;
+            break;
+        
+        case MODE:
+            updateModeSelection(cstate, nstate, tick);
+            break;
+        
+        case TEAM:
+            updateTeamSelection(cstate, nstate, tick);
+            break;
+    
+        case STAGE:
+            if(updateStageSelection(cstate, nstate, tick))
+                returnStatus = UpdateReturnStatus::SWITCH_FIGHT;
+            break;
+        };
+    
+        _renderer->pushState(nstate);
+    }
     _renderer->render();
 
     // sleep till next game tick to avoid inputs beeing applied twice
@@ -54,21 +66,23 @@ core::_Scene::UpdateReturnStatus core::SelectionScene::update()
     return returnStatus;
 }
 
-bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
+bool core::SelectionScene::updateCharacterSelection(const State& cstate, State& nstate, tick_t tick)
 {
+    nstate = cstate;
+
     for (auto [hostID, pDevice] : _game.getInputDeviceManager())
     {
         input::PlayerInput previousInput = pDevice->getInput(tick - 1);
         input::PlayerInput currentInput = pDevice->getInput(tick);
         input::PlayerInput toggle = ~previousInput & currentInput;
 
-        auto player = state.fightSelection.players.begin();
-        for (; player != state.fightSelection.players.end(); player++)
+        auto player = nstate.fightSelection.players.begin();
+        for (; player != nstate.fightSelection.players.end(); player++)
             if (player->hostID == hostID && player->deviceID == pDevice->getID())
                 break;
         
         // device input influences player
-        if (player != state.fightSelection.players.end())
+        if (player != nstate.fightSelection.players.end())
         {
             // change character
             float previousHAxis = input::get::horizontalAxis(previousInput);
@@ -81,14 +95,14 @@ bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
             // quit player selection
             if (input::get::cancel(toggle))
             {
-                state.fightSelection.players.erase(player);
+                nstate.fightSelection.players.erase(player);
                 continue;
             }
 
             // confirm selections
             if (input::get::jump(toggle))
             {
-                state.currentLevel = MODE;
+                nstate.currentLevel = MODE;
                 return false;
             }
         }
@@ -98,7 +112,7 @@ bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
             Player player;
             player.hostID = hostID;
             player.deviceID = pDevice->getID();
-            state.fightSelection.players.push_back(player);    
+            nstate.fightSelection.players.push_back(player);    
         }
         // quit to main menu
         else if (input::get::cancel(toggle))
@@ -108,9 +122,11 @@ bool core::SelectionScene::updateCharacterSelection(State& state, tick_t tick)
     return false;
 }
 
-void core::SelectionScene::updateModeSelection(State& state, tick_t tick)
+void core::SelectionScene::updateModeSelection(const State& cstate, State& nstate, tick_t tick)
 {
-    for (auto& player : state.fightSelection.players)
+    nstate = cstate;
+
+    for (auto& player : nstate.fightSelection.players)
     {
         auto* pDevice = _game.getInputDeviceManager().get(player);
         if (!pDevice) continue;
@@ -124,20 +140,20 @@ void core::SelectionScene::updateModeSelection(State& state, tick_t tick)
         float currentHAxis = input::get::horizontalAxis(currentInput);
         if (previousHAxis == 0.0f && currentHAxis != 0.0f)
         {
-            int nm = (int)state.fightSelection.mode + (currentHAxis > 0.0f ? 1 : -1);
+            int nm = (int)nstate.fightSelection.mode + (currentHAxis > 0.0f ? 1 : -1);
             nm = (nm + (int)FightSelection::Mode::MAX_ENUM) % (int)FightSelection::Mode::MAX_ENUM;
-            state.fightSelection.mode = FightSelection::Mode(nm);
+            nstate.fightSelection.mode = FightSelection::Mode(nm);
         }
 
         // confirm mode selection
         if (input::get::jump(toggle))
         {
-            state.currentLevel = 
-                state.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
-                state.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
+            nstate.currentLevel = 
+                nstate.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
+                nstate.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
                 TEAM : STAGE;
-            if (state.currentLevel == TEAM)
-                for (auto& p : state.fightSelection.players)
+            if (nstate.currentLevel == TEAM)
+                for (auto& p : nstate.fightSelection.players)
                     p.team = 0;
             return;
         }
@@ -145,15 +161,17 @@ void core::SelectionScene::updateModeSelection(State& state, tick_t tick)
         // quit to character selection
         if (input::get::cancel(toggle))
         {
-            state.currentLevel = CHARACTERS;
+            nstate.currentLevel = CHARACTERS;
             return;
         }
     }
 }
 
-void core::SelectionScene::updateTeamSelection(State& state, tick_t tick)
+void core::SelectionScene::updateTeamSelection(const State& cstate, State& nstate, tick_t tick)
 {
-    for (auto& player : state.fightSelection.players)
+    nstate = cstate;
+
+    for (auto& player : nstate.fightSelection.players)
     {
         auto* pDevice = _game.getInputDeviceManager().get(player);
         if (!pDevice) continue;
@@ -168,12 +186,12 @@ void core::SelectionScene::updateTeamSelection(State& state, tick_t tick)
         float currentHAxis = input::get::horizontalAxis(currentInput);
 
         // change team
-        if (state.fightSelection.mode == FightSelection::Mode::TEAM_2)
+        if (nstate.fightSelection.mode == FightSelection::Mode::TEAM_2)
         {
             if (previousHAxis == 0.0f && currentHAxis != 0.0f)
                 player.team = currentHAxis > 0.0f ? 1 : 0;
         }
-        else if (state.fightSelection.mode == FightSelection::Mode::TEAM_4)
+        else if (nstate.fightSelection.mode == FightSelection::Mode::TEAM_4)
         {
             if (previousHAxis == 0.0f && currentHAxis != 0.0f)
                 player.team = (player.team & ~1) | (currentHAxis > 0.0f ? 1 : 0);
@@ -184,22 +202,24 @@ void core::SelectionScene::updateTeamSelection(State& state, tick_t tick)
         // confirm mode selection
         if (input::get::jump(toggle))
         {
-            state.currentLevel = STAGE;
+            nstate.currentLevel = STAGE;
             return;
         }
 
         // quit to character selection
         if (input::get::cancel(toggle))
         {
-            state.currentLevel = MODE;
+            nstate.currentLevel = MODE;
             return;
         }
     }
 }
 
-bool core::SelectionScene::updateStageSelection(State& state, tick_t tick)
+bool core::SelectionScene::updateStageSelection(const State& cstate, State& nstate, tick_t tick)
 {
-    for (auto& player : state.fightSelection.players)
+    nstate = cstate;
+
+    for (auto& player : nstate.fightSelection.players)
     {
         auto* pDevice = _game.getInputDeviceManager().get(player);
         if (!pDevice) continue;
@@ -213,9 +233,9 @@ bool core::SelectionScene::updateStageSelection(State& state, tick_t tick)
         float currentHAxis = input::get::horizontalAxis(currentInput);
         if (previousHAxis == 0.0f && currentHAxis != 0.0f)
         {
-            int ns = (int)state.fightSelection.stage + (currentHAxis > 0.0f ? 1 : -1);
+            int ns = (int)nstate.fightSelection.stage + (currentHAxis > 0.0f ? 1 : -1);
             ns = (ns + (int)FightSelection::Stage::MAX_ENUM) % (int)FightSelection::Stage::MAX_ENUM;
-            state.fightSelection.stage = FightSelection::Stage(ns);
+            nstate.fightSelection.stage = FightSelection::Stage(ns);
         }
 
         // confirm stage selection
@@ -225,9 +245,9 @@ bool core::SelectionScene::updateStageSelection(State& state, tick_t tick)
         // quit to mode/team selection
         if (input::get::cancel(toggle))
         {
-            state.currentLevel = 
-                state.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
-                state.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
+            nstate.currentLevel = 
+                nstate.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
+                nstate.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
                 TEAM : MODE;
             return false;
         }
