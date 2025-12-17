@@ -1,13 +1,13 @@
 #pragma once
 #include "renderer.hpp"
-#include "../core/fightScene.hpp"
+#include "../fight/scene.hpp"
 
 
 
 namespace renderer
 {
 
-    class FightRenderer : public _Renderer<core::FightScene::State> 
+    class FightRenderer : public _Renderer<fight::State> 
     {};
 
 };  // end namespace renderer

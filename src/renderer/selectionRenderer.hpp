@@ -1,13 +1,13 @@
 #pragma once
 #include "renderer.hpp"
-#include "../core/selectionScene.hpp"
+#include "../selection/scene.hpp"
 
 
 
 namespace renderer
 {
 
-    class SelectionRenderer : public _Renderer<core::SelectionScene::State> 
+    class SelectionRenderer : public _Renderer<selection::State> 
     {
     public:
         SelectionRenderer(SDL_Window* const window, SDL_Renderer* const renderer) :
@@ -50,7 +50,7 @@ namespace renderer
             };
 
             // draw from current state
-            using opt = core::SelectionScene::NavigationOptions;
+            using opt = selection::NavigationOptions;
             switch (_state.currentLevel)
             {
             case opt::CHARACTERS:
@@ -73,13 +73,13 @@ namespace renderer
                 fWriteLine("Mode");
                 switch (_state.fightSelection.mode)
                 {
-                case core::FightSelection::Mode::LAST_MAN_STANDING:
+                case FightSelectionInfo::Mode::LAST_MAN_STANDING:
                     fWriteLine("< Last Man Standing >");  break;
-                case core::FightSelection::Mode::HEAD_HUNTERS:
+                case FightSelectionInfo::Mode::HEAD_HUNTERS:
                     fWriteLine("< Head Hunters >");       break;
-                case core::FightSelection::Mode::TEAM_2:
+                case FightSelectionInfo::Mode::TEAM_2:
                     fWriteLine("< 2 Teams Deathmatch >"); break;
-                case core::FightSelection::Mode::TEAM_4:
+                case FightSelectionInfo::Mode::TEAM_4:
                     fWriteLine("< 4 Teams Deathmatch >"); break;
                 };
                 break;
@@ -88,7 +88,7 @@ namespace renderer
                 fWriteLine("Teams");
                 fWriteTeam("Team 1", 0);
                 fWriteTeam("Team 2", 1);
-                if (_state.fightSelection.mode == core::FightSelection::Mode::TEAM_4)
+                if (_state.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4)
                 {
                     fWriteTeam("Team 3", 2);
                     fWriteTeam("Team 4", 3);
@@ -107,11 +107,11 @@ namespace renderer
                 fWriteLine("Stage");
                 switch (_state.fightSelection.stage)
                 {
-                case core::FightSelection::Stage::TOWER:
+                case FightSelectionInfo::Stage::TOWER:
                     fWriteLine("< Tower >"); break;
-                case core::FightSelection::Stage::CAVE:
+                case FightSelectionInfo::Stage::CAVE:
                     fWriteLine("< Cave >"); break;
-                case core::FightSelection::Stage::CASTLE:
+                case FightSelectionInfo::Stage::CASTLE:
                     fWriteLine("< Castle >"); break;
                 }
                 break;

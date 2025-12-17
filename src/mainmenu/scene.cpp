@@ -1,24 +1,24 @@
 #include <thread>
-#include "mainMenuScene.hpp"
+#include "scene.hpp"
 #include "../renderer/mainMenuRenderer.hpp"
 #include "../game.hpp"
 
 
 
-core::MainMenuScene::MainMenuScene(Game& game) :
+mainmenu::Scene::Scene(Game& game) :
     _Scene(game)
 {
     auto* renderer = new renderer::MainMenuRenderer(_game.getWindow().get(), _game.getRenderer().get());
-    _renderer.reset(static_cast<renderer::_Renderer<MainMenuScene::State>*>(renderer));
+    _renderer.reset(static_cast<renderer::_Renderer<mainmenu::State>*>(renderer));
 }
 
-void core::MainMenuScene::activate() 
+void mainmenu::Scene::activate() 
 {}
 
-void core::MainMenuScene::deactivate() 
+void mainmenu::Scene::deactivate() 
 {}
 
-core::_Scene::UpdateReturnStatus core::MainMenuScene::update()
+_Scene::UpdateReturnStatus mainmenu::Scene::update()
 {
     // main menu navigation logic using game inputs
     //

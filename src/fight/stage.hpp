@@ -2,7 +2,7 @@
 
 
 
-namespace core
+namespace fight
 {
 
     class Stage

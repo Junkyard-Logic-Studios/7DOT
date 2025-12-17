@@ -1,72 +1,47 @@
-#include <thread>
-#include "selectionScene.hpp"
-#include "player.hpp"
+#include "scene.hpp"
 #include "../renderer/selectionRenderer.hpp"
 #include "../game.hpp"
 
 
 
-core::SelectionScene::SelectionScene(Game& game) :
-    _Scene(game)
+selection::Scene::Scene(Game& game) :
+    _SyncedScene(game)
 {
     auto* renderer = new renderer::SelectionRenderer(_game.getWindow().get(), _game.getRenderer().get());
-    _renderer.reset(static_cast<renderer::_Renderer<SelectionScene::State>*>(renderer));
+    _renderer.reset(static_cast<renderer::_Renderer<State>*>(renderer));
 }
 
-void core::SelectionScene::activate()
-{
-    _stateBuffer.setLatestValidTick(Game::currentTick());
-}
-
-void core::SelectionScene::deactivate()
-{}
-
-core::_Scene::UpdateReturnStatus core::SelectionScene::update() 
-{ 
-    tick_t currentTick = Game::currentTick();
-    tick_t latestValidTick = _stateBuffer.getLatestValidTick();
-    UpdateReturnStatus returnStatus = UpdateReturnStatus::STAY;
-
-    while (latestValidTick < currentTick)
+_Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
+    const State& givenState, 
+    State& followingState, 
+    tick_t tick
+) {
+    UpdateReturnStatus status = UpdateReturnStatus::STAY;
+    switch (givenState.currentLevel)
     {
-        // cstate: current state 
-        // nstate: next state to be calculated from current state
-        // tick: tick for nstate
-        auto [cstate, nstate, tick] = _stateBuffer.calculateNextValidState();
-        latestValidTick = tick;
-
-        switch (cstate.currentLevel)
-        {
-        case CHARACTERS: 
-            if(updateCharacterSelection(cstate, nstate, tick))
-                returnStatus = UpdateReturnStatus::SWITCH_MAINMENU;
-            break;
-        
-        case MODE:
-            updateModeSelection(cstate, nstate, tick);
-            break;
-        
-        case TEAM:
-            updateTeamSelection(cstate, nstate, tick);
-            break;
+    case CHARACTERS: 
+        if(updateCharacterSelection(givenState, followingState, tick))
+            status = UpdateReturnStatus::SWITCH_MAINMENU;
+        break;
     
-        case STAGE:
-            if(updateStageSelection(cstate, nstate, tick))
-                returnStatus = UpdateReturnStatus::SWITCH_FIGHT;
-            break;
-        };
+    case MODE:
+        updateModeSelection(givenState, followingState, tick);
+        break;
     
-        _renderer->pushState(nstate);
-    }
-    _renderer->render();
+    case TEAM:
+        updateTeamSelection(givenState, followingState, tick);
+        break;
 
-    // sleep till next game tick to avoid inputs beeing applied twice
-    std::this_thread::sleep_until(Game::nextTickTime(currentTick));
+    case STAGE:
+        if(updateStageSelection(givenState, followingState, tick))
+            status = UpdateReturnStatus::SWITCH_FIGHT;
+        break;
+    };
 
-    return returnStatus;
+    return status;
 }
 
-bool core::SelectionScene::updateCharacterSelection(const State& cstate, State& nstate, tick_t tick)
+bool selection::Scene::updateCharacterSelection(const State& cstate, State& nstate, tick_t tick)
 {
     nstate = cstate;
 
@@ -122,7 +97,7 @@ bool core::SelectionScene::updateCharacterSelection(const State& cstate, State& 
     return false;
 }
 
-void core::SelectionScene::updateModeSelection(const State& cstate, State& nstate, tick_t tick)
+void selection::Scene::updateModeSelection(const State& cstate, State& nstate, tick_t tick)
 {
     nstate = cstate;
 
@@ -141,16 +116,16 @@ void core::SelectionScene::updateModeSelection(const State& cstate, State& nstat
         if (previousHAxis == 0.0f && currentHAxis != 0.0f)
         {
             int nm = (int)nstate.fightSelection.mode + (currentHAxis > 0.0f ? 1 : -1);
-            nm = (nm + (int)FightSelection::Mode::MAX_ENUM) % (int)FightSelection::Mode::MAX_ENUM;
-            nstate.fightSelection.mode = FightSelection::Mode(nm);
+            nm = (nm + (int)FightSelectionInfo::Mode::MAX_ENUM) % (int)FightSelectionInfo::Mode::MAX_ENUM;
+            nstate.fightSelection.mode = FightSelectionInfo::Mode(nm);
         }
 
         // confirm mode selection
         if (input::get::jump(toggle))
         {
             nstate.currentLevel = 
-                nstate.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
-                nstate.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
+                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_2 ||
+                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4 ?
                 TEAM : STAGE;
             if (nstate.currentLevel == TEAM)
                 for (auto& p : nstate.fightSelection.players)
@@ -167,7 +142,7 @@ void core::SelectionScene::updateModeSelection(const State& cstate, State& nstat
     }
 }
 
-void core::SelectionScene::updateTeamSelection(const State& cstate, State& nstate, tick_t tick)
+void selection::Scene::updateTeamSelection(const State& cstate, State& nstate, tick_t tick)
 {
     nstate = cstate;
 
@@ -186,12 +161,12 @@ void core::SelectionScene::updateTeamSelection(const State& cstate, State& nstat
         float currentHAxis = input::get::horizontalAxis(currentInput);
 
         // change team
-        if (nstate.fightSelection.mode == FightSelection::Mode::TEAM_2)
+        if (nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_2)
         {
             if (previousHAxis == 0.0f && currentHAxis != 0.0f)
                 player.team = currentHAxis > 0.0f ? 1 : 0;
         }
-        else if (nstate.fightSelection.mode == FightSelection::Mode::TEAM_4)
+        else if (nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4)
         {
             if (previousHAxis == 0.0f && currentHAxis != 0.0f)
                 player.team = (player.team & ~1) | (currentHAxis > 0.0f ? 1 : 0);
@@ -215,7 +190,7 @@ void core::SelectionScene::updateTeamSelection(const State& cstate, State& nstat
     }
 }
 
-bool core::SelectionScene::updateStageSelection(const State& cstate, State& nstate, tick_t tick)
+bool selection::Scene::updateStageSelection(const State& cstate, State& nstate, tick_t tick)
 {
     nstate = cstate;
 
@@ -234,8 +209,8 @@ bool core::SelectionScene::updateStageSelection(const State& cstate, State& nsta
         if (previousHAxis == 0.0f && currentHAxis != 0.0f)
         {
             int ns = (int)nstate.fightSelection.stage + (currentHAxis > 0.0f ? 1 : -1);
-            ns = (ns + (int)FightSelection::Stage::MAX_ENUM) % (int)FightSelection::Stage::MAX_ENUM;
-            nstate.fightSelection.stage = FightSelection::Stage(ns);
+            ns = (ns + (int)FightSelectionInfo::Stage::MAX_ENUM) % (int)FightSelectionInfo::Stage::MAX_ENUM;
+            nstate.fightSelection.stage = FightSelectionInfo::Stage(ns);
         }
 
         // confirm stage selection
@@ -246,8 +221,8 @@ bool core::SelectionScene::updateStageSelection(const State& cstate, State& nsta
         if (input::get::cancel(toggle))
         {
             nstate.currentLevel = 
-                nstate.fightSelection.mode == FightSelection::Mode::TEAM_2 ||
-                nstate.fightSelection.mode == FightSelection::Mode::TEAM_4 ?
+                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_2 ||
+                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4 ?
                 TEAM : MODE;
             return false;
         }

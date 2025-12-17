@@ -17,3 +17,8 @@ namespace std::chrono
 };
 
 using tick_t = int32_t;
+
+using hostID_t = uint8_t;
+constexpr std::size_t MAX_HOST_COUNT = std::numeric_limits<hostID_t>::max() + 1;
+constexpr std::size_t MAX_LOCAL_DEVICE_COUNT = 16;
+constexpr std::size_t MAX_DEVICE_COUNT = MAX_HOST_COUNT * MAX_LOCAL_DEVICE_COUNT;

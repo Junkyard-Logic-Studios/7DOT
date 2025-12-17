@@ -6,10 +6,9 @@
 #include "SDLException.hpp"
 #include "constants.hpp"
 #include "input/deviceManager.hpp"
-#include "core/scene.hpp"
-#include "core/mainMenuScene.hpp"
-#include "core/selectionScene.hpp"
-#include "core/fightScene.hpp"
+#include "mainmenu/scene.hpp"
+#include "selection/scene.hpp"
+#include "fight/scene.hpp"
 
 
 
@@ -51,12 +50,12 @@ public:
         _renderer.reset(renderer);
 
         // create scenes
-        _mainMenuScene  = std::make_unique<core::MainMenuScene>(*this);
-        _selectionScene = std::make_unique<core::SelectionScene>(*this);
-        _fightScene     = std::make_unique<core::FightScene>(*this);
+        _mainMenuScene  = std::make_unique<mainmenu::Scene>(*this);
+        _selectionScene = std::make_unique<selection::Scene>(*this);
+        _fightScene     = std::make_unique<fight::Scene>(*this);
 
         // pick main menu scene as first active scene
-        _activeScene = static_cast<core::_Scene*>(_mainMenuScene.get());
+        _activeScene = static_cast<_Scene*>(_mainMenuScene.get());
         _activeScene->activate();
 
         // show window once initialization is complete
@@ -100,20 +99,20 @@ public:
             pDevice->poll();
 
         // update active scene
-        const auto switchScene = [&](core::_Scene* next) {
+        const auto switchScene = [&](_Scene* next) {
             _activeScene->deactivate();
             _activeScene = next;
             _activeScene->activate();
         };
         switch (_activeScene->update())
         {
-        case core::_Scene::UpdateReturnStatus::SWITCH_MAINMENU:
+        case _Scene::UpdateReturnStatus::SWITCH_MAINMENU:
             switchScene(_mainMenuScene.get()); break;
-        case core::_Scene::UpdateReturnStatus::SWITCH_SELECTION:
+        case _Scene::UpdateReturnStatus::SWITCH_SELECTION:
             switchScene(_selectionScene.get()); break;
-        case core::_Scene::UpdateReturnStatus::SWITCH_FIGHT:
+        case _Scene::UpdateReturnStatus::SWITCH_FIGHT:
             switchScene(_fightScene.get()); break;
-        case core::_Scene::UpdateReturnStatus::QUIT:
+        case _Scene::UpdateReturnStatus::QUIT:
             return false;
         }
 
@@ -135,10 +134,10 @@ private:
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer{nullptr, SDL_DestroyRenderer};
 
     // game scenes
-    std::unique_ptr<core::MainMenuScene>  _mainMenuScene;
-    std::unique_ptr<core::SelectionScene> _selectionScene;
-    std::unique_ptr<core::FightScene>     _fightScene;
-    core::_Scene* _activeScene;
+    std::unique_ptr<mainmenu::Scene>  _mainMenuScene;
+    std::unique_ptr<selection::Scene> _selectionScene;
+    std::unique_ptr<fight::Scene>     _fightScene;
+    _Scene* _activeScene;
 
     // input devices
     input::DeviceManager _deviceManager;

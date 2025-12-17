@@ -3,7 +3,7 @@
 
 
 
-namespace core
+namespace fight
 {
 
     class Archer

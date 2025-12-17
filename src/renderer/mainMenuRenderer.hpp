@@ -1,12 +1,14 @@
 #pragma once
 #include "renderer.hpp"
-#include "../core/mainMenuScene.hpp"
+#include "../mainmenu/scene.hpp"
 #include "TextureAtlas.hpp"
+
+
 
 namespace renderer
 {
 
-	class MainMenuRenderer : public _Renderer<core::MainMenuScene::State>
+	class MainMenuRenderer : public _Renderer<mainmenu::State>
 	{
 	public:
 		MainMenuRenderer(SDL_Window *const window, SDL_Renderer *const renderer) : 
@@ -50,7 +52,7 @@ namespace renderer
 			};
 
 			// draw from current state
-			using opt = core::MainMenuScene::NavigationOptions;
+			using opt = mainmenu::NavigationOptions;
 			switch (_state.currentLevel)
 			{
 			case opt::TITLE:
