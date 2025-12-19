@@ -11,6 +11,11 @@ selection::Scene::Scene(Game& game) :
     _renderer.reset(static_cast<renderer::_Renderer<State>*>(renderer));
 }
 
+void selection::Scene::_activate(std::shared_ptr<SceneContext> context)
+{
+    _knownHosts = context->knownHosts;
+}
+
 _Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
     const State& givenState, 
     State& followingState, 
@@ -45,54 +50,56 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
 {
     nstate = cstate;
 
-    for (auto [hostID, pDevice] : _game.getInputDeviceManager())
-    {
-        input::PlayerInput previousInput = pDevice->getInput(tick - 1);
-        input::PlayerInput currentInput = pDevice->getInput(tick);
-        input::PlayerInput toggle = ~previousInput & currentInput;
-
-        auto player = nstate.fightSelection.players.begin();
-        for (; player != nstate.fightSelection.players.end(); player++)
-            if (player->hostID == hostID && player->deviceID == pDevice->getID())
-                break;
-        
-        // device input influences player
-        if (player != nstate.fightSelection.players.end())
+    for (hostID_t hostID : _knownHosts)
+        for (uint8_t deviceID = 0; deviceID < MAX_LOCAL_DEVICE_COUNT; deviceID++)
         {
-            // change character
-            float previousHAxis = input::get::horizontalAxis(previousInput);
-            float currentHAxis = input::get::horizontalAxis(currentInput);
-            if (previousHAxis == 0.0f && currentHAxis > 0.0f)
-                player->character++;
-            if (previousHAxis == 0.0f && currentHAxis < 0.0f)
-                player->character--;
+            auto& iBuffer = _inputBufferSet.get(hostID, deviceID);
+            input::PlayerInput previousInput = iBuffer[tick - 1];
+            input::PlayerInput currentInput = iBuffer[tick];
+            input::PlayerInput toggle = ~previousInput & currentInput;
 
-            // quit player selection
-            if (input::get::cancel(toggle))
+            auto player = nstate.fightSelection.players.begin();
+            for (; player != nstate.fightSelection.players.end(); player++)
+                if (player->hostID == hostID && player->deviceID == deviceID)
+                    break;
+            
+            // device input influences player
+            if (player != nstate.fightSelection.players.end())
             {
-                nstate.fightSelection.players.erase(player);
-                continue;
-            }
+                // change character
+                float previousHAxis = input::get::horizontalAxis(previousInput);
+                float currentHAxis = input::get::horizontalAxis(currentInput);
+                if (previousHAxis == 0.0f && currentHAxis > 0.0f)
+                    player->character++;
+                if (previousHAxis == 0.0f && currentHAxis < 0.0f)
+                    player->character--;
 
-            // confirm selections
-            if (input::get::jump(toggle))
-            {
-                nstate.currentLevel = MODE;
-                return false;
+                // quit player selection
+                if (input::get::cancel(toggle))
+                {
+                    nstate.fightSelection.players.erase(player);
+                    continue;
+                }
+
+                // confirm selections
+                if (input::get::jump(toggle))
+                {
+                    nstate.currentLevel = MODE;
+                    return false;
+                }
             }
+            // join player selection
+            else if (input::get::jump(toggle))
+            {
+                Player player;
+                player.hostID = hostID;
+                player.deviceID = deviceID;
+                nstate.fightSelection.players.push_back(player);    
+            }
+            // quit to main menu
+            else if (input::get::cancel(toggle))
+                return true;
         }
-        // join player selection
-        else if (input::get::jump(toggle))
-        {
-            Player player;
-            player.hostID = hostID;
-            player.deviceID = pDevice->getID();
-            nstate.fightSelection.players.push_back(player);    
-        }
-        // quit to main menu
-        else if (input::get::cancel(toggle))
-            return true;
-    }
 
     return false;
 }
@@ -103,11 +110,9 @@ void selection::Scene::updateModeSelection(const State& cstate, State& nstate, t
 
     for (auto& player : nstate.fightSelection.players)
     {
-        auto* pDevice = _game.getInputDeviceManager().get(player);
-        if (!pDevice) continue;
-        
-        input::PlayerInput previousInput = pDevice->getInput(tick - 1);
-        input::PlayerInput currentInput = pDevice->getInput(tick);
+        auto& iBuffer = _inputBufferSet.get(player);
+        input::PlayerInput previousInput = iBuffer[tick - 1];
+        input::PlayerInput currentInput = iBuffer[tick];
         input::PlayerInput toggle = ~previousInput & currentInput;
 
         // change mode
@@ -148,11 +153,9 @@ void selection::Scene::updateTeamSelection(const State& cstate, State& nstate, t
 
     for (auto& player : nstate.fightSelection.players)
     {
-        auto* pDevice = _game.getInputDeviceManager().get(player);
-        if (!pDevice) continue;
-
-        input::PlayerInput previousInput = pDevice->getInput(tick - 1);
-        input::PlayerInput currentInput = pDevice->getInput(tick);
+        auto& iBuffer = _inputBufferSet.get(player);
+        input::PlayerInput previousInput = iBuffer[tick - 1];
+        input::PlayerInput currentInput = iBuffer[tick];
         input::PlayerInput toggle = ~previousInput & currentInput;
 
         float previousVAxis = input::get::verticalAxis(previousInput);
@@ -196,11 +199,9 @@ bool selection::Scene::updateStageSelection(const State& cstate, State& nstate, 
 
     for (auto& player : nstate.fightSelection.players)
     {
-        auto* pDevice = _game.getInputDeviceManager().get(player);
-        if (!pDevice) continue;
-        
-        input::PlayerInput previousInput = pDevice->getInput(tick - 1);
-        input::PlayerInput currentInput = pDevice->getInput(tick);
+        auto& iBuffer = _inputBufferSet.get(player);
+        input::PlayerInput previousInput = iBuffer[tick - 1];
+        input::PlayerInput currentInput = iBuffer[tick];
         input::PlayerInput toggle = ~previousInput & currentInput;
 
         // change stage

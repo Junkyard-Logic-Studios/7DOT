@@ -12,7 +12,7 @@ mainmenu::Scene::Scene(Game& game) :
     _renderer.reset(static_cast<renderer::_Renderer<mainmenu::State>*>(renderer));
 }
 
-void mainmenu::Scene::activate() 
+void mainmenu::Scene::activate(std::shared_ptr<SceneContext> context) 
 {}
 
 void mainmenu::Scene::deactivate() 
@@ -48,10 +48,14 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
 
     // check latest inputs from all devices
     _state.inputDevicePolls.clear();
-    for (auto [_, pDevice] : _game.getInputDeviceManager())
+    for (auto* pDevice : _game.getInputManager().getLocalDevices())
     {
-        input::PlayerInput previousInput = pDevice->getInput(currentTick - 1);
-        input::PlayerInput currentInput = pDevice->getInput(currentTick);
+        if (!pDevice) continue;
+
+        pDevice->poll(_currentInputs[pDevice->getID()]);
+
+        input::PlayerInput previousInput = _previousInputs[pDevice->getID()];
+        input::PlayerInput currentInput = _currentInputs[pDevice->getID()];
         input::PlayerInput toggle = ~previousInput & currentInput;
 
         _state.inputDevicePolls.push_back({ pDevice->getName(), currentInput });
@@ -140,6 +144,8 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
             continue;   // recognize only 1 input per device
         }
     }
+
+    std::copy(_currentInputs.begin(), _currentInputs.end(), _previousInputs.begin());
 
     _renderer->pushState(_state);
     _renderer->render();

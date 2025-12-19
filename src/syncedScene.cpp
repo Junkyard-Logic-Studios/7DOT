@@ -5,13 +5,17 @@
 
 
 template<typename S>
-void _SyncedScene<S>::activate()
+void _SyncedScene<S>::activate(std::shared_ptr<SceneContext> context)
 {
+    _inputBufferSet = input::InputBufferSet(context->knownHosts);
+    _startTime = context->startTime;
+
     // start with state where scene last left off
-    auto currentTick = Game::currentTick();
-    _stateBuffer[currentTick % STATE_BUFFER_SIZE] = 
+    _stateBuffer[_startTime % STATE_BUFFER_SIZE] = 
         _stateBuffer[_latestValid % STATE_BUFFER_SIZE];
-    _latestValid = currentTick;
+    _latestValid = _startTime;
+
+    _activate(context);
 }
 
 template<typename S>
@@ -33,8 +37,14 @@ _Scene::UpdateReturnStatus _SyncedScene<S>::update()
         
         _latestValid++;
 
-        // check input queue for new (/delayed -> rollback-worthy) inputs
-        checkInputs();
+        // check input pipeline for new (/delayed -> rollback-worthy) inputs
+        input::PlayerInput i;
+        while (_game.getInputPipeline().take(i))
+            if (input::get::timestamp(i) > _startTime)
+            {
+                _inputBufferSet.get(input::get::hostID(i), input::get::deviceID(i)).insert(i);
+                _latestValid = std::min(_latestValid, input::get::timestamp(i) - 1);
+            }
     }
 
     if (_renderer)
@@ -47,14 +57,6 @@ _Scene::UpdateReturnStatus _SyncedScene<S>::update()
     std::this_thread::sleep_until(Game::nextTickTime(currentTick));
 
     return returnStatus;
-}
-
-template<typename S>
-void _SyncedScene<S>::checkInputs()
-{
-//  for input : input_queue
-//      input_buffers.insert(input)
-//      _latestValid = min(_latestValid, input.timestamp)
 }
 
 

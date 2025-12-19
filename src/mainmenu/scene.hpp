@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <vector>
 #include "../scene.hpp"
 #include "../renderer/renderer.hpp"
@@ -41,13 +42,15 @@ namespace mainmenu
     {
     public:
         Scene(Game& game);
-        void activate();
+        void activate(std::shared_ptr<SceneContext> context);
         void deactivate();
         UpdateReturnStatus update();
 
     private:
         std::unique_ptr<renderer::_Renderer<State>> _renderer;
         State _state = { {}, TITLE, TITLE };
+        std::array<input::PlayerInput, MAX_LOCAL_DEVICE_COUNT> _previousInputs;
+        std::array<input::PlayerInput, MAX_LOCAL_DEVICE_COUNT> _currentInputs;
     };
 
-};  // end namespace core
+};  // end namespace mainmenu

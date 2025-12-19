@@ -20,15 +20,16 @@ namespace input
         inline uint8_t getID() const
             { return _id; }
         inline virtual const char* getName() const = 0;
-        void poll();
-        PlayerInput getInput(tick_t tick) const;
+
+        // checks device for action inputs and writes them to value
+        // returns true if action inputs have changed since the last poll 
+        bool poll(PlayerInput& value);
 
     protected:
         inline virtual PlayerInput _poll() const = 0;
     
     private:
         const uint8_t _id;
-        InputBuffer _inputBuffer;
         uint16_t _lastActions = 0;
     };
 

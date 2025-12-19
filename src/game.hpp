@@ -5,7 +5,9 @@
 #include "SDL3/SDL.h"
 #include "SDLException.hpp"
 #include "constants.hpp"
-#include "input/deviceManager.hpp"
+#include "sceneContext.hpp"
+#include "input/manager.hpp"
+#include "input/pipeline.hpp"
 #include "mainmenu/scene.hpp"
 #include "selection/scene.hpp"
 #include "fight/scene.hpp"
@@ -35,7 +37,7 @@ public:
     }
 
     Game() :
-        _deviceManager(0)
+        _inputManager(0)
     {
         // init SDL
         if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
@@ -53,10 +55,11 @@ public:
         _mainMenuScene  = std::make_unique<mainmenu::Scene>(*this);
         _selectionScene = std::make_unique<selection::Scene>(*this);
         _fightScene     = std::make_unique<fight::Scene>(*this);
-
+        
         // pick main menu scene as first active scene
+        _sceneContext = std::make_shared<SceneContext>();
         _activeScene = static_cast<_Scene*>(_mainMenuScene.get());
-        _activeScene->activate();
+        _activeScene->activate(_sceneContext);
 
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
@@ -85,24 +88,24 @@ public:
                 return false;
 
             case SDL_EVENT_GAMEPAD_ADDED:
-                _deviceManager.addGamepad(event.gdevice.which);
+                _inputManager.addGamepad(event.gdevice.which);
                 break;
 
             case SDL_EVENT_GAMEPAD_REMOVED:
-                _deviceManager.removeGamepad(event.gdevice.which);
+                _inputManager.removeGamepad(event.gdevice.which);
                 break;
             }
         }
 
         // poll input devices
-        for (auto [_, pDevice] : _deviceManager)
-            pDevice->poll();
+        _inputManager.poll(_inputPipeline);
 
         // update active scene
         const auto switchScene = [&](_Scene* next) {
             _activeScene->deactivate();
             _activeScene = next;
-            _activeScene->activate();
+            _sceneContext->startTime = currentTick();   // TODO: let scenes decide
+            _activeScene->activate(_sceneContext);
         };
         switch (_activeScene->update())
         {
@@ -125,8 +128,11 @@ public:
     const std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)>& getRenderer() const
         { return _renderer; }
 
-    const input::DeviceManager& getInputDeviceManager() const
-        { return _deviceManager; }
+    const input::Manager& getInputManager() const
+        { return _inputManager; }
+    
+    input::Pipeline& getInputPipeline()
+        { return _inputPipeline; }
 
 private:
     // SDL handles
@@ -134,11 +140,13 @@ private:
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer{nullptr, SDL_DestroyRenderer};
 
     // game scenes
+    std::shared_ptr<SceneContext>    _sceneContext;
     std::unique_ptr<mainmenu::Scene>  _mainMenuScene;
     std::unique_ptr<selection::Scene> _selectionScene;
     std::unique_ptr<fight::Scene>     _fightScene;
     _Scene* _activeScene;
 
     // input devices
-    input::DeviceManager _deviceManager;
+    input::Manager _inputManager;
+    input::Pipeline _inputPipeline;
 };
