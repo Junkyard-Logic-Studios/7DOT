@@ -82,9 +82,11 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
                 break;
             
             case PVP_LOCAL:
+                _game.getSceneContext()->startTime = currentTick + 1;
                 return UpdateReturnStatus::SWITCH_SELECTION;
 
-            case PVP_REMOTE: break;
+            case PVP_REMOTE:
+                _game.getSceneContext()->startTime = currentTick + 1;
                 return UpdateReturnStatus::SWITCH_SELECTION;
             
             case PVP_BACK:

@@ -1,6 +1,7 @@
 #include "scene.hpp"
 #include "../renderer/selectionRenderer.hpp"
 #include "../game.hpp"
+#include "../fight/context.hpp"
 
 
 
@@ -26,7 +27,10 @@ _Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
     {
     case CHARACTERS: 
         if(updateCharacterSelection(givenState, followingState, tick))
+        {
+            _game.getSceneContext()->startTime = tick + 1;
             status = UpdateReturnStatus::SWITCH_MAINMENU;
+        }
         break;
     
     case MODE:
@@ -39,7 +43,14 @@ _Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
 
     case STAGE:
         if(updateStageSelection(givenState, followingState, tick))
+        {
+            auto context = std::make_shared<fight::Context>();
+            context->knownHosts = _knownHosts;
+            context->startTime = tick + 1;
+            context->fightSelection = followingState.fightSelection;
+            _game.getSceneContext() = std::static_pointer_cast<SceneContext>(context);
             status = UpdateReturnStatus::SWITCH_FIGHT;
+        }
         break;
     };
 

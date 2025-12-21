@@ -1,6 +1,7 @@
 #pragma once
 #include "renderer.hpp"
 #include "../selection/scene.hpp"
+#include "TextureAtlas.hpp"
 
 
 
@@ -12,7 +13,14 @@ namespace renderer
     public:
         SelectionRenderer(SDL_Window* const window, SDL_Renderer* const renderer) :
             _Renderer(window, renderer)
-        {}
+        {
+			_menuAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/menuAtlas.bmp", ASSET_DIR "Atlas/menuAtlas.xml");
+        }
+
+        ~SelectionRenderer()
+        {
+			_menuAtlas.unload();
+        }
 
         void pushState(State state)
         {
@@ -21,6 +29,8 @@ namespace renderer
 
         void render()
         {
+            using opt = selection::NavigationOptions;
+
             // reset drawing
 			SDL_SetRenderDrawColor(_sdlRenderer, 0, 0, 0, 255);
 			SDL_RenderClear(_sdlRenderer);
@@ -49,12 +59,33 @@ namespace renderer
                 ys[team] += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0f;
             };
 
-            // draw from current state
-            using opt = selection::NavigationOptions;
+            // background
             switch (_state.currentLevel)
             {
             case opt::CHARACTERS:
-                fWriteLine("Characters");
+            case opt::MODE:
+            case opt::TEAM:
+				SDL_FRect R;
+				R = {0.0f, 0.0f,        (float)winw,  winh * .5f};
+				_menuAtlas.draw(_sdlRenderer, "titleSky", &R);
+				R = {0.0f, (float)winh, (float)winw, -winh * .5f};
+				_menuAtlas.draw(_sdlRenderer, "titleSky", &R);
+                R = {0.0f, 0.0f, (float)winw, (float)winh};
+                _menuAtlas.draw(_sdlRenderer, "mmg/bgGlow", &R);
+                break;
+
+            case opt::STAGE:
+                R = {0.0f, 0.0f, (float)winw, (float)winh};
+                _menuAtlas.draw(_sdlRenderer, "mapWater", &R);
+                _menuAtlas.draw(_sdlRenderer, "mapLand", &R);
+                break;
+            }
+
+            // foreground
+            switch (_state.currentLevel)
+            {
+            case opt::CHARACTERS:
+                fWriteLine("[ Characters ]");
                 for (auto& player : _state.fightSelection.players)
                 {
                     char* text;
@@ -70,7 +101,7 @@ namespace renderer
                 break;
             
             case opt::MODE:
-                fWriteLine("Mode");
+                fWriteLine("[ Mode ]");
                 switch (_state.fightSelection.mode)
                 {
                 case FightSelectionInfo::Mode::LAST_MAN_STANDING:
@@ -85,7 +116,7 @@ namespace renderer
                 break;
             
             case opt::TEAM:
-                fWriteLine("Teams");
+                fWriteLine("[ Teams ]");
                 fWriteTeam("Team 1", 0);
                 fWriteTeam("Team 2", 1);
                 if (_state.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4)
@@ -104,7 +135,8 @@ namespace renderer
                 break;
 
             case opt::STAGE:
-                fWriteLine("Stage");
+                y = winh * 0.8f;
+                fWriteLine("[ Stage ]");
                 switch (_state.fightSelection.stage)
                 {
                 case FightSelectionInfo::Stage::TOWER:
@@ -121,6 +153,7 @@ namespace renderer
         }
     
     private:
+		TextureAtlas _menuAtlas;
         State _state;
     };
 

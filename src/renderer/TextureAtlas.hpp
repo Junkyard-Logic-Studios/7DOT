@@ -7,28 +7,25 @@
 #include <vector>
 #include <iostream>
 
-struct SpriteRect
-{
-	int x, y, w, h;
-};
+
 
 class TextureAtlas
 {
 public:
-	bool load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath);
-	void unload();
-	void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
-	void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
+	inline bool load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath);
+	inline void unload();
+	inline void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
+	inline void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
 
 private:
 	SDL_Texture *texture = nullptr;
-	std::unordered_map<std::string, SpriteRect> atlas;
+	std::unordered_map<std::string, SDL_Rect> atlas;
 };
 
 // Very minimal XML tag parser (enough for <SubTexture name="..." x="..." .../>)
-static std::unordered_map<std::string, SpriteRect> parseAtlasXML(const std::string &xmlPath)
+static std::unordered_map<std::string, SDL_Rect> parseAtlasXML(const std::string &xmlPath)
 {
-	std::unordered_map<std::string, SpriteRect> atlas;
+	std::unordered_map<std::string, SDL_Rect> atlas;
 	std::ifstream file(xmlPath);
 	if (!file.is_open())
 	{
@@ -72,7 +69,7 @@ static std::unordered_map<std::string, SpriteRect> parseAtlasXML(const std::stri
 	return atlas;
 }
 
-bool TextureAtlas::load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath)
+inline bool TextureAtlas::load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath)
 {
 	// ⚠️ SDL3 cannot load PNGs by default — only BMP, unless SDL_image is added.
 	SDL_Surface *surface = SDL_LoadBMP(imagePath.c_str());
@@ -103,7 +100,7 @@ bool TextureAtlas::load(SDL_Renderer *renderer, const std::string &imagePath, co
 	return true;
 }
 
-void TextureAtlas::unload()
+inline void TextureAtlas::unload()
 {
 	if (texture)
 	{
@@ -113,7 +110,7 @@ void TextureAtlas::unload()
 	atlas.clear();
 }
 
-void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale, bool fliphoriz)
+inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale, bool fliphoriz)
 {
 	auto it = atlas.find(name);
 	if (it == atlas.end())
@@ -127,13 +124,13 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x
 		flip = -1;
 	}
 
-	const SpriteRect &r = it->second;
+	const SDL_Rect &r = it->second;
 	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
 	SDL_FRect dst = {(float)x, (float)y, (float)r.w * scale * flip, (float)r.h * scale};
 	SDL_RenderTexture(renderer, texture, &src, &dst);
 }
 
-void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect)
+inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect)
 {
 	auto it = atlas.find(name);
 	if (it == atlas.end())
@@ -141,7 +138,7 @@ void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, const S
 		std::cerr << "Sprite not found in atlas: " << name << "\n";
 		return;
 	}
-	const SpriteRect &r = it->second;
+	const SDL_Rect &r = it->second;
 	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
 
 	// If dstrect is null, draw the sprite at its original size at (0,0)

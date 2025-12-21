@@ -14,13 +14,11 @@ namespace renderer
 		MainMenuRenderer(SDL_Window *const window, SDL_Renderer *const renderer) : 
 			_Renderer(window, renderer)
 		{
-			_bgAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/bgAtlas.bmp", ASSET_DIR "Atlas/bgAtlas.xml");
 			_menuAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/menuAtlas.bmp", ASSET_DIR "Atlas/menuAtlas.xml");
 		}
 
 		~MainMenuRenderer()
 		{
-			_bgAtlas.unload();
 			_menuAtlas.unload();
 		}
 
@@ -38,8 +36,21 @@ namespace renderer
 
 			int winw = 640, winh = 480;
 			SDL_GetWindowSize(_sdlWindow, &winw, &winh);
-			float x, y = winh / 3.0f;
+			float x, y = winh * 0.6;
 			SDL_FRect screenRect = {0.0f, 0.0f, (float)winw, (float)winh};
+			
+			// background
+			{
+				SDL_FRect R;
+				R = {0.0f, 0.0f,        (float)winw,  winh * .5f};
+				_menuAtlas.draw(_sdlRenderer, "titleSky", &R);
+				R = {0.0f, (float)winh, (float)winw, -winh * .5f};
+				_menuAtlas.draw(_sdlRenderer, "titleSky", &R);
+				R = {0.0f, winh * .06f, (float)winw,  winh * .5f};
+				_menuAtlas.draw(_sdlRenderer, "towerTop", &R);
+				R = {0.0f, winh * .56f, (float)winw,  winh * .5f};
+				_menuAtlas.draw(_sdlRenderer, "towerTile", &R);
+			}
 
 			// function to write a line of debug text
 			auto fWriteLine = [&](const char *text, bool cursor = false)
@@ -58,12 +69,11 @@ namespace renderer
 			case opt::TITLE:
 				if (_state.selected == opt::TITLE)
 				{
-					_bgAtlas.draw(_sdlRenderer, "distantSky", &screenRect);
 					fWriteLine("start");
 				}
 				else
 				{
-					_bgAtlas.draw(_sdlRenderer, "CavesBack", &screenRect);
+                    fWriteLine("[ 7 Days of Towerfalling ]");
 					fWriteLine("PVP", _state.selected == opt::PVP);
 					fWriteLine("Session Stats", _state.selected == opt::SESSION_STATS);
 					fWriteLine("Options", _state.selected == opt::OPTIONS);
@@ -72,16 +82,19 @@ namespace renderer
 				break;
 
 			case opt::PVP:
+                fWriteLine("[ PVP ]");
 				fWriteLine("Local", _state.selected == opt::PVP_LOCAL);
 				fWriteLine("Remote", _state.selected == opt::PVP_REMOTE);
 				fWriteLine("Back", _state.selected == opt::PVP_BACK);
 				break;
 
 			case opt::SESSION_STATS:
+                fWriteLine("[ Session Stats ]");
 				fWriteLine("Back", _state.selected == opt::SESSION_STATS_BACK);
 				break;
 
 			case opt::OPTIONS:
+                fWriteLine("[ Options ]");
 				fWriteLine(_state.inputDevicePolls.empty() ? "Plug in a gamepad, please." : "Connected gamepads:");
 				for (auto &[name, playerInput] : _state.inputDevicePolls)
 				{
@@ -111,7 +124,6 @@ namespace renderer
 		}
 
 	private:
-		TextureAtlas _bgAtlas;
 		TextureAtlas _menuAtlas;
 		State _state;
 	};

@@ -104,7 +104,6 @@ public:
         const auto switchScene = [&](_Scene* next) {
             _activeScene->deactivate();
             _activeScene = next;
-            _sceneContext->startTime = currentTick();   // TODO: let scenes decide
             _activeScene->activate(_sceneContext);
         };
         switch (_activeScene->update())
@@ -134,13 +133,16 @@ public:
     input::Pipeline& getInputPipeline()
         { return _inputPipeline; }
 
+    std::shared_ptr<SceneContext>& getSceneContext()
+        { return _sceneContext; }
+
 private:
     // SDL handles
     std::unique_ptr<SDL_Window, decltype(&SDL_DestroyWindow)> _window{nullptr, SDL_DestroyWindow};
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer{nullptr, SDL_DestroyRenderer};
 
     // game scenes
-    std::shared_ptr<SceneContext>    _sceneContext;
+    std::shared_ptr<SceneContext>     _sceneContext;
     std::unique_ptr<mainmenu::Scene>  _mainMenuScene;
     std::unique_ptr<selection::Scene> _selectionScene;
     std::unique_ptr<fight::Scene>     _fightScene;

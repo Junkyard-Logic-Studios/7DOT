@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include "../syncedScene.hpp"
+#include "../fightSelectionInfo.hpp"
 #include "../renderer/renderer.hpp"
 #include "stage.hpp"
 #include "archer.hpp"
@@ -25,16 +26,15 @@ namespace fight
     class Scene : public _SyncedScene<State>
     {
     public:
-        inline Scene(Game& game) :
-            _SyncedScene(game) 
-        {}
+        Scene(Game& game);
 
     protected:
-        inline UpdateReturnStatus computeFollowingState(
-            const State& givenState, State& followingState, tick_t tick)
-            { return UpdateReturnStatus::SWITCH_SELECTION; }
+        void _activate(std::shared_ptr<SceneContext> context);
+        UpdateReturnStatus computeFollowingState(
+            const State& givenState, State& followingState, tick_t tick);
 
     private:
+        FightSelectionInfo _fightSelection;
         Stage _stage;
         std::vector<Archer> _archers;
     };
