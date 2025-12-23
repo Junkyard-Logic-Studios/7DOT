@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include "inputBuffer.hpp"
 #include "../player.hpp"
 

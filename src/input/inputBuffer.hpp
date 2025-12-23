@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include "../constants.hpp"
 #include "input.hpp"
 #include <stdexcept>
@@ -77,7 +76,7 @@ namespace input
 
     private:
         tick_t _latest = 0;
-        std::array<PlayerInput, INPUT_BUFFER_SIZE> _buffer{0};
+        PlayerInput _buffer[INPUT_BUFFER_SIZE] = { 0 };
     };
 
 };  // end namespace input

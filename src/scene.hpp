@@ -1,10 +1,9 @@
 #pragma once
-#include <memory>
-#include "sceneContext.hpp"
 
 
 
 class Game;
+class SceneContext;
 
 class _Scene
 {
@@ -22,7 +21,7 @@ public:
         _game(game)
     {}
 
-    virtual void activate(std::shared_ptr<SceneContext> context) = 0;
+    virtual void activate(SceneContext& context) = 0;
     virtual void deactivate() = 0;
     virtual UpdateReturnStatus update() = 0;
 

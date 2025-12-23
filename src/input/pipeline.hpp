@@ -1,6 +1,5 @@
 #pragma once
 #include <mutex>
-#include <array>
 #include "input.hpp"
 
 
@@ -41,7 +40,7 @@ namespace input
         std::mutex _mutex;
         std::size_t _bot = 0;
         std::size_t _top = 0;
-        std::array<PlayerInput, INPUT_PIPELINE_SIZE> _buffer;
+        PlayerInput _buffer[INPUT_PIPELINE_SIZE];
     };
 
 };  // end namespace input

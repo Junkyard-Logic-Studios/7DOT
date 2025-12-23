@@ -12,7 +12,7 @@ mainmenu::Scene::Scene(Game& game) :
     _renderer.reset(static_cast<renderer::_Renderer<mainmenu::State>*>(renderer));
 }
 
-void mainmenu::Scene::activate(std::shared_ptr<SceneContext> context) 
+void mainmenu::Scene::activate(SceneContext& context) 
 {}
 
 void mainmenu::Scene::deactivate() 
@@ -147,7 +147,7 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
         }
     }
 
-    std::copy(_currentInputs.begin(), _currentInputs.end(), _previousInputs.begin());
+    std::copy(_currentInputs, _currentInputs + MAX_LOCAL_DEVICE_COUNT, _previousInputs);
 
     _renderer->pushState(_state);
     _renderer->render();

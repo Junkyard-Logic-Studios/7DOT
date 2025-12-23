@@ -4,6 +4,7 @@
 #include "input/inputBufferSet.hpp"
 #include "input/pipeline.hpp"
 #include "renderer/renderer.hpp"
+#include <memory>
 
 
 
@@ -25,7 +26,7 @@ public:
         _Scene(game)
     {}
 
-    void activate(std::shared_ptr<SceneContext> context);
+    void activate(SceneContext& context);
     void deactivate();
     UpdateReturnStatus update();
     
@@ -33,7 +34,7 @@ protected:
     input::InputBufferSet _inputBufferSet {{}};
     std::unique_ptr<renderer::_Renderer<S>> _renderer;
     
-    inline virtual void _activate(std::shared_ptr<SceneContext> context) {};
+    inline virtual void _activate(SceneContext& context) {};
     inline virtual void _deactivate() {};
     virtual UpdateReturnStatus computeFollowingState(
         const S& givenState, S& followingState, tick_t tick) = 0;
@@ -41,5 +42,5 @@ protected:
 private:
     tick_t _startTime = 0;
     tick_t _latestValid = 0;
-    std::array<S, STATE_BUFFER_SIZE> _stateBuffer;
+    S _stateBuffer[STATE_BUFFER_SIZE];
 };

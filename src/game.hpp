@@ -1,13 +1,9 @@
 #pragma once
-#include <chrono>
 #include <memory>
-#include <unordered_map>
 #include "SDL3/SDL.h"
 #include "SDLException.hpp"
-#include "constants.hpp"
 #include "sceneContext.hpp"
 #include "input/manager.hpp"
-#include "input/pipeline.hpp"
 #include "mainmenu/scene.hpp"
 #include "selection/scene.hpp"
 #include "fight/scene.hpp"
@@ -59,7 +55,7 @@ public:
         // pick main menu scene as first active scene
         _sceneContext = std::make_shared<SceneContext>();
         _activeScene = static_cast<_Scene*>(_mainMenuScene.get());
-        _activeScene->activate(_sceneContext);
+        _activeScene->activate(*_sceneContext);
 
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
@@ -104,7 +100,7 @@ public:
         const auto switchScene = [&](_Scene* next) {
             _activeScene->deactivate();
             _activeScene = next;
-            _activeScene->activate(_sceneContext);
+            _activeScene->activate(*_sceneContext);
         };
         switch (_activeScene->update())
         {

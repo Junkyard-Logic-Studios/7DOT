@@ -1,6 +1,5 @@
 #pragma once
 #include "configure.hpp"
-#include <type_traits>
 #include <inttypes.h>
 #include <chrono>
 using namespace std::chrono_literals;

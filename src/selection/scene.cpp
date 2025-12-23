@@ -12,9 +12,9 @@ selection::Scene::Scene(Game& game) :
     _renderer.reset(static_cast<renderer::_Renderer<State>*>(renderer));
 }
 
-void selection::Scene::_activate(std::shared_ptr<SceneContext> context)
+void selection::Scene::_activate(SceneContext& context)
 {
-    _knownHosts = context->knownHosts;
+    _knownHosts = context.knownHosts;
 }
 
 _Scene::UpdateReturnStatus selection::Scene::computeFollowingState(

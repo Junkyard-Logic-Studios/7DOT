@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include "SDL3/SDL_gamepad.h"
 #include "SDL3/SDL_keyboard.h"
 #include "SDL3/SDL_scancode.h"
@@ -40,14 +39,17 @@ namespace input
         inline Gamepad(uint8_t id, SDL_Gamepad* gamepad) :
             IDevice(id),
             _joystickID(SDL_GetGamepadID(gamepad)),
-            _pGamepad(gamepad, SDL_CloseGamepad)
+            _pGamepad(gamepad)
         {}
+
+        inline ~Gamepad()
+            { SDL_CloseGamepad(_pGamepad); }
 
         inline SDL_JoystickID getJoystickID() const
             { return _joystickID; }
 
         inline const char* getName() const
-            { return SDL_GetGamepadName(_pGamepad.get()); }
+            { return SDL_GetGamepadName(_pGamepad); }
 
     protected:
         inline PlayerInput _poll() const
@@ -55,30 +57,30 @@ namespace input
             PlayerInput input = 0;
             
             // get action buttons
-            set::start( input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_START));
-            set::shoot( input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_WEST));
-            set::jump(  input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_SOUTH));
-            set::toggle(input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_NORTH));
-            set::cancel(input, SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_EAST));
+            set::start( input, SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_START));
+            set::shoot( input, SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_WEST));
+            set::jump(  input, SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_SOUTH));
+            set::toggle(input, SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_NORTH));
+            set::cancel(input, SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_EAST));
 
             // count dash inputs
             uint16_t count = 0;
-            count += SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
-            count += SDL_GetGamepadButton(_pGamepad.get(), SDL_GamepadButton::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
-            count += (SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 1000);
-            count += (SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 1000);
+            count += SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
+            count += SDL_GetGamepadButton(_pGamepad, SDL_GamepadButton::SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
+            count += (SDL_GetGamepadAxis(_pGamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFT_TRIGGER) > 1000);
+            count += (SDL_GetGamepadAxis(_pGamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) > 1000);
             set::dashCount(input, count);
 
             // get axis inputs
-            set::horizontalAxis(input, SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX));
-            set::verticalAxis(input, SDL_GetGamepadAxis(_pGamepad.get(), SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY));
+            set::horizontalAxis(input, SDL_GetGamepadAxis(_pGamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTX));
+            set::verticalAxis(input, SDL_GetGamepadAxis(_pGamepad, SDL_GamepadAxis::SDL_GAMEPAD_AXIS_LEFTY));
 
             return input;
         }
 
     private:
         const SDL_JoystickID _joystickID;
-        const std::unique_ptr<SDL_Gamepad, decltype(&SDL_CloseGamepad)> _pGamepad;
+        SDL_Gamepad* _pGamepad;
     };
 
 

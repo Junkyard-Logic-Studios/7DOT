@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include "../syncedScene.hpp"
 #include "../fightSelectionInfo.hpp"
 #include "../renderer/renderer.hpp"
@@ -29,7 +28,7 @@ namespace fight
         Scene(Game& game);
 
     protected:
-        void _activate(std::shared_ptr<SceneContext> context);
+        void _activate(SceneContext& context);
         UpdateReturnStatus computeFollowingState(
             const State& givenState, State& followingState, tick_t tick);
 

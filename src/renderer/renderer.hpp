@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include "SDL3/SDL_render.h"
 
 

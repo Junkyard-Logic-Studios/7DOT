@@ -29,7 +29,7 @@ namespace selection
         Scene(Game& game);
 
     protected:
-        void _activate(std::shared_ptr<SceneContext> context);
+        void _activate(SceneContext& context);
         UpdateReturnStatus computeFollowingState(
             const State& givenState, State& followingState, tick_t tick);
 

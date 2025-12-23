@@ -27,7 +27,7 @@ namespace input
         inline hostID_t getHostID() const
             { return _hostID; }
 
-        inline std::array<IDevice*, MAX_LOCAL_DEVICE_COUNT> getLocalDevices() const
+        inline const std::array<IDevice*, MAX_LOCAL_DEVICE_COUNT>& getLocalDevices() const
             { return _devices; }
         
         inline void addGamepad(SDL_JoystickID joystickID)
