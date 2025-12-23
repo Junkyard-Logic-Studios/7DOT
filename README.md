@@ -28,8 +28,13 @@ mkdir build && cd build
 ```
 
 Then configure the cmake project:
+- ...for development:
 ```
-cmake .. -DCMAKE_BUILD_TYPE=<Debug|Release> -DBUILD_TESTS=<ON|OFF>
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
+```
+- ...or for usage:
+```
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
 ```
 
 Finally build with:
