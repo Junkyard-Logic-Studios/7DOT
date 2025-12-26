@@ -21,10 +21,19 @@ struct FightSelectionInfo
 
     enum class Stage
     {
-        TOWER,
-        CAVE,
-        CASTLE,
+        SACRED_GROUND,
+        TWILIGHT_SPIRE,
+        BACKFIRE,
+        FLIGHT,
+        MIRAGE,
+        THORNWOOD,
+        FROSTFANG_KEEP,
+        KINGS_COURT,
+        SUNKEN_CITY,
+        MOONSTONE,
+        TOWERFORGE,
+        ASCENSION,
         MAX_ENUM
     }
-    stage = Stage::TOWER;
+    stage = Stage::SACRED_GROUND;
 };

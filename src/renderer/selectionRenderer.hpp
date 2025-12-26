@@ -139,12 +139,30 @@ namespace renderer
                 fWriteLine("[ Stage ]");
                 switch (_state.fightSelection.stage)
                 {
-                case FightSelectionInfo::Stage::TOWER:
-                    fWriteLine("< Tower >"); break;
-                case FightSelectionInfo::Stage::CAVE:
-                    fWriteLine("< Cave >"); break;
-                case FightSelectionInfo::Stage::CASTLE:
-                    fWriteLine("< Castle >"); break;
+                case FightSelectionInfo::Stage::SACRED_GROUND:  
+                    fWriteLine("< Sacred Ground >");  break;
+                case FightSelectionInfo::Stage::TWILIGHT_SPIRE: 
+                    fWriteLine("< Twilight Spire >"); break;
+                case FightSelectionInfo::Stage::BACKFIRE:       
+                    fWriteLine("< Backfire >");       break;
+                case FightSelectionInfo::Stage::FLIGHT:         
+                    fWriteLine("< Flight >");         break;
+                case FightSelectionInfo::Stage::MIRAGE:         
+                    fWriteLine("< Mirage >");         break;
+                case FightSelectionInfo::Stage::THORNWOOD:      
+                    fWriteLine("< Thornwood >");      break;
+                case FightSelectionInfo::Stage::FROSTFANG_KEEP: 
+                    fWriteLine("< Frostfang Keep >"); break;
+                case FightSelectionInfo::Stage::KINGS_COURT:    
+                    fWriteLine("< Kings Court >");    break;
+                case FightSelectionInfo::Stage::SUNKEN_CITY:    
+                    fWriteLine("< Sunken City >");    break;
+                case FightSelectionInfo::Stage::MOONSTONE:      
+                    fWriteLine("< Moonstone >");      break;
+                case FightSelectionInfo::Stage::TOWERFORGE:     
+                    fWriteLine("< TowerForge >");     break;
+                case FightSelectionInfo::Stage::ASCENSION:      
+                    fWriteLine("< Ascension >");      break;
                 }
                 break;
             }

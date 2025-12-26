@@ -4,18 +4,22 @@
 
 namespace fight
 {
-
-    class Stage
+    
+    enum class Stage
     {
-    public:
-        struct State
-        {
-            // dynamic collider positions
-        };
-
-    private:
-        // static collision map
-        // dynamic colliders
+        SACRED_GROUND,
+        TWILIGHT_SPIRE,
+        BACKFIRE,
+        FLIGHT,
+        MIRAGE,
+        THORNWOOD,
+        FROSTFANG_KEEP,
+        KINGS_COURT,
+        SUNKEN_CITY,
+        MOONSTONE,
+        TOWERFORGE,
+        ASCENSION,
+        MAX_ENUM
     };
 
-};  // end namespace core
+};  // end namespace fight

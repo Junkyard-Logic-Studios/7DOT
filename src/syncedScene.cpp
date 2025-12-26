@@ -24,7 +24,10 @@ void _SyncedScene<S>::activate(SceneContext& context)
 }
 
 template<typename S>
-void _SyncedScene<S>::deactivate() {}
+void _SyncedScene<S>::deactivate() 
+{
+    _deactivate();
+}
 
 template<typename S>
 _Scene::UpdateReturnStatus _SyncedScene<S>::update()

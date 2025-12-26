@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <iostream>
+#include "../constants.hpp"
 
 
 
@@ -16,6 +17,7 @@ public:
 	inline void unload();
 	inline void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
 	inline void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
+	inline void drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, float x, float y);
 
 private:
 	SDL_Texture *texture = nullptr;
@@ -144,4 +146,24 @@ inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, 
 	// If dstrect is null, draw the sprite at its original size at (0,0)
 	SDL_FRect default_dst = {0.0f, 0.0f, (float)r.w, (float)r.h};
 	SDL_RenderTexture(renderer, texture, &src, dstrect ? dstrect : &default_dst);
+}
+
+inline void TextureAtlas::drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, float x, float y)
+{
+	auto it = atlas.find(name);
+	if (it == atlas.end())
+	{
+		std::cerr << "Sprite not found in atlas: " << name << "\n";
+		return;
+	}
+
+	if (index < 0)
+		index = 0;
+
+	const SDL_Rect& r = it->second;
+	int iw = index % (r.w / TILESIZE);
+	int ih = index / (r.w / TILESIZE);
+	SDL_FRect src = { (float)r.x + iw * TILESIZE, (float)r.y + ih * TILESIZE, (float)TILESIZE, (float)TILESIZE };
+	SDL_FRect dst = { (float)x, (float)y, (float)TILESIZE, (float)TILESIZE};
+	SDL_RenderTexture(renderer, texture, &src, &dst);
 }
