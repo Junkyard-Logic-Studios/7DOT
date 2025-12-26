@@ -51,11 +51,13 @@ namespace fight
 
             _backgroundBits = new uint64_t[(width + 63) / 64 * height];
             _backgroundTiles = new int8_t[width * height];
-            memset(_backgroundTiles, -1, width * height);
             _solidBits = new uint64_t[(width + 63) / 64 * height];
             _solidTiles = new int8_t[width * height];
+            
+            memset(_backgroundBits, 0, (width + 63) / 64 * height * 8);
+            memset(_backgroundTiles, -1, width * height);
+            memset(_solidBits, 0, (width + 63) / 64 * height * 8);
             memset(_solidTiles, -1, width * height);
-
 
             // fill background bitmap
             {

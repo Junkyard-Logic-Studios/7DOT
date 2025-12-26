@@ -2,6 +2,8 @@
 #include "renderer.hpp"
 #include "../selection/scene.hpp"
 #include "TextureAtlas.hpp"
+#include "../fight/mode.hpp"
+#include "../fight/stage.hpp"
 
 
 
@@ -86,7 +88,7 @@ namespace renderer
             {
             case opt::CHARACTERS:
                 fWriteLine("[ Characters ]");
-                for (auto& player : _state.fightSelection.players)
+                for (auto& player : _state.players)
                 {
                     char* text;
                     SDL_asprintf(&text, "device (host: %d, local: %d)  -  character: < %u >",
@@ -102,29 +104,23 @@ namespace renderer
             
             case opt::MODE:
                 fWriteLine("[ Mode ]");
-                switch (_state.fightSelection.mode)
                 {
-                case FightSelectionInfo::Mode::LAST_MAN_STANDING:
-                    fWriteLine("< Last Man Standing >");  break;
-                case FightSelectionInfo::Mode::HEAD_HUNTERS:
-                    fWriteLine("< Head Hunters >");       break;
-                case FightSelectionInfo::Mode::TEAM_2:
-                    fWriteLine("< 2 Teams Deathmatch >"); break;
-                case FightSelectionInfo::Mode::TEAM_4:
-                    fWriteLine("< 4 Teams Deathmatch >"); break;
-                };
+                    char temp[32];
+                    SDL_snprintf(temp, 32, "< %s >", fight::ModeName(_state.mode));
+                    fWriteLine(temp);
+                }
                 break;
             
             case opt::TEAM:
                 fWriteLine("[ Teams ]");
                 fWriteTeam("Team 1", 0);
                 fWriteTeam("Team 2", 1);
-                if (_state.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4)
+                if (_state.mode == fight::Mode::TEAM_4)
                 {
                     fWriteTeam("Team 3", 2);
                     fWriteTeam("Team 4", 3);
                 }
-                for (auto& player : _state.fightSelection.players)
+                for (auto& player : _state.players)
                 {
                     char* text;
                     SDL_asprintf(&text, "device (host: %d, local: %d)", 
@@ -137,32 +133,10 @@ namespace renderer
             case opt::STAGE:
                 y = winh * 0.8f;
                 fWriteLine("[ Stage ]");
-                switch (_state.fightSelection.stage)
                 {
-                case FightSelectionInfo::Stage::SACRED_GROUND:  
-                    fWriteLine("< Sacred Ground >");  break;
-                case FightSelectionInfo::Stage::TWILIGHT_SPIRE: 
-                    fWriteLine("< Twilight Spire >"); break;
-                case FightSelectionInfo::Stage::BACKFIRE:       
-                    fWriteLine("< Backfire >");       break;
-                case FightSelectionInfo::Stage::FLIGHT:         
-                    fWriteLine("< Flight >");         break;
-                case FightSelectionInfo::Stage::MIRAGE:         
-                    fWriteLine("< Mirage >");         break;
-                case FightSelectionInfo::Stage::THORNWOOD:      
-                    fWriteLine("< Thornwood >");      break;
-                case FightSelectionInfo::Stage::FROSTFANG_KEEP: 
-                    fWriteLine("< Frostfang Keep >"); break;
-                case FightSelectionInfo::Stage::KINGS_COURT:    
-                    fWriteLine("< Kings Court >");    break;
-                case FightSelectionInfo::Stage::SUNKEN_CITY:    
-                    fWriteLine("< Sunken City >");    break;
-                case FightSelectionInfo::Stage::MOONSTONE:      
-                    fWriteLine("< Moonstone >");      break;
-                case FightSelectionInfo::Stage::TOWERFORGE:     
-                    fWriteLine("< TowerForge >");     break;
-                case FightSelectionInfo::Stage::ASCENSION:      
-                    fWriteLine("< Ascension >");      break;
+                    char temp[32];
+                    SDL_snprintf(temp, 32, "< %s >", fight::StageName(_state.stage));
+                    fWriteLine(temp);
                 }
                 break;
             }

@@ -1,8 +1,10 @@
 #pragma once
 #include <vector>
 #include "../syncedScene.hpp"
-#include "../fightSelectionInfo.hpp"
 #include "../renderer/renderer.hpp"
+#include "../player.hpp"
+#include "mode.hpp"
+#include "stage.hpp"
 #include "level.hpp"
 #include "archer.hpp"
 
@@ -27,6 +29,8 @@ namespace fight
     {
     public:
         Scene(Game& game);
+        Mode getMode() const;
+        Stage getStage() const;
         const Level& getLevel(std::size_t index) const;
 
     protected:
@@ -36,7 +40,9 @@ namespace fight
             const State& givenState, State& followingState, tick_t tick);
 
     private:
-        FightSelectionInfo _fightSelection;
+        std::vector<Player> _players;
+        fight::Mode _mode;
+        fight::Stage _stage;
         std::vector<Level> _levels;
         std::vector<Archer> _archers;
     };

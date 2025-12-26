@@ -2,7 +2,6 @@
 #include "renderer.hpp"
 #include "../fight/scene.hpp"
 #include "TextureAtlas.hpp"
-#include "../fightSelectionInfo.hpp"
 
 
 
@@ -29,9 +28,6 @@ namespace renderer
         void pushState(State state)
             { this->_state = state; }
 
-        void setFightSelectionInfo(FightSelectionInfo fightSelection)
-            { this->_fightSelection = fightSelection; }
-
         void render()
         {
             // reset drawing
@@ -44,46 +40,28 @@ namespace renderer
 			float x, y = winh / 5.0f;
 			SDL_FRect screenRect = {0.0f, 0.0f, (float)winw, (float)winh};
 
-            // backdrop
-            switch (_fightSelection.stage)
-            {
-            //case FightSelectionInfo::Stage::TOWER:
-            //    _bgAtlas.draw(_sdlRenderer, "daySky", &screenRect);
-            //    break;
-            //
-            //case FightSelectionInfo::Stage::CAVE:
-            //    _bgAtlas.draw(_sdlRenderer, "CavesBack", &screenRect);
-            //    break;
-            //
-            //case FightSelectionInfo::Stage::CASTLE:
-            //    _bgAtlas.draw(_sdlRenderer, "desertDusk", &screenRect);
-            //    break;
-            default: 
-                _bgAtlas.draw(_sdlRenderer, "daySky", &screenRect);
-                break;
-            }
-
             auto& level = _scene.getLevel(_state.levelIndex);
 
+            // backdrop
+            _bgAtlas.draw(_sdlRenderer, "daySky", &screenRect);
+
             // background
-            
+            std::string tsname(fight::StageName(_scene.getStage()));
+            tsname[0] = std::tolower(tsname[0]);
+            tsname.erase(std::remove_if(tsname.begin(), tsname.end(), isspace), tsname.end());
             for (int y = 0; y < level.height; y++)
                 for (int x = 0; x < level.width; x++)
                     if (level._backgroundBits[y] & (1ul << x))
-                        _atlas.drawTile(
-                            _sdlRenderer, 
-                            "tilesets/sacredGroundBG", 
-                            level._backgroundTiles[level.width * y + x],
-                            x * TILESIZE,
-                            y * TILESIZE
-                        );
+                        _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname + "BG", 
+                            level._backgroundTiles[level.width * y + x], x, y);
+
+            // foreground
 
             SDL_RenderPresent(_sdlRenderer);
         }
 
     private:
         const fight::Scene& _scene;
-        FightSelectionInfo _fightSelection;
         TextureAtlas _atlas;
     	TextureAtlas _bgAtlas;
         State _state;

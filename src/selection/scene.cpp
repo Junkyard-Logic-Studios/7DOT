@@ -47,7 +47,9 @@ _Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
             auto context = std::make_shared<fight::Context>();
             context->knownHosts = _knownHosts;
             context->startTime = tick + 1;
-            context->fightSelection = followingState.fightSelection;
+            context->players = followingState.players;
+            context->mode = followingState.mode;
+            context->stage = followingState.stage;
             _game.getSceneContext() = std::static_pointer_cast<SceneContext>(context);
             status = UpdateReturnStatus::SWITCH_FIGHT;
         }
@@ -69,13 +71,13 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
             input::PlayerInput currentInput = iBuffer[tick];
             input::PlayerInput toggle = ~previousInput & currentInput;
 
-            auto player = nstate.fightSelection.players.begin();
-            for (; player != nstate.fightSelection.players.end(); player++)
+            auto player = nstate.players.begin();
+            for (; player != nstate.players.end(); player++)
                 if (player->hostID == hostID && player->deviceID == deviceID)
                     break;
             
             // device input influences player
-            if (player != nstate.fightSelection.players.end())
+            if (player != nstate.players.end())
             {
                 // change character
                 float previousHAxis = input::get::horizontalAxis(previousInput);
@@ -88,7 +90,7 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
                 // quit player selection
                 if (input::get::cancel(toggle))
                 {
-                    nstate.fightSelection.players.erase(player);
+                    nstate.players.erase(player);
                     continue;
                 }
 
@@ -105,7 +107,7 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
                 Player player;
                 player.hostID = hostID;
                 player.deviceID = deviceID;
-                nstate.fightSelection.players.push_back(player);    
+                nstate.players.push_back(player);    
             }
             // quit to main menu
             else if (input::get::cancel(toggle))
@@ -119,7 +121,7 @@ void selection::Scene::updateModeSelection(const State& cstate, State& nstate, t
 {
     nstate = cstate;
 
-    for (auto& player : nstate.fightSelection.players)
+    for (auto& player : nstate.players)
     {
         auto& iBuffer = _inputBufferSet.get(player);
         input::PlayerInput previousInput = iBuffer[tick - 1];
@@ -131,20 +133,20 @@ void selection::Scene::updateModeSelection(const State& cstate, State& nstate, t
         float currentHAxis = input::get::horizontalAxis(currentInput);
         if (previousHAxis == 0.0f && currentHAxis != 0.0f)
         {
-            int nm = (int)nstate.fightSelection.mode + (currentHAxis > 0.0f ? 1 : -1);
-            nm = (nm + (int)FightSelectionInfo::Mode::MAX_ENUM) % (int)FightSelectionInfo::Mode::MAX_ENUM;
-            nstate.fightSelection.mode = FightSelectionInfo::Mode(nm);
+            int nm = (int)nstate.mode + (currentHAxis > 0.0f ? 1 : -1);
+            nm = (nm + (int)fight::Mode::MAX_ENUM) % (int)fight::Mode::MAX_ENUM;
+            nstate.mode = fight::Mode(nm);
         }
 
         // confirm mode selection
         if (input::get::jump(toggle))
         {
             nstate.currentLevel = 
-                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_2 ||
-                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4 ?
+                nstate.mode == fight::Mode::TEAM_2 ||
+                nstate.mode == fight::Mode::TEAM_4 ?
                 TEAM : STAGE;
             if (nstate.currentLevel == TEAM)
-                for (auto& p : nstate.fightSelection.players)
+                for (auto& p : nstate.players)
                     p.team = 0;
             return;
         }
@@ -162,7 +164,7 @@ void selection::Scene::updateTeamSelection(const State& cstate, State& nstate, t
 {
     nstate = cstate;
 
-    for (auto& player : nstate.fightSelection.players)
+    for (auto& player : nstate.players)
     {
         auto& iBuffer = _inputBufferSet.get(player);
         input::PlayerInput previousInput = iBuffer[tick - 1];
@@ -175,12 +177,12 @@ void selection::Scene::updateTeamSelection(const State& cstate, State& nstate, t
         float currentHAxis = input::get::horizontalAxis(currentInput);
 
         // change team
-        if (nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_2)
+        if (nstate.mode == fight::Mode::TEAM_2)
         {
             if (previousHAxis == 0.0f && currentHAxis != 0.0f)
                 player.team = currentHAxis > 0.0f ? 1 : 0;
         }
-        else if (nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4)
+        else if (nstate.mode == fight::Mode::TEAM_4)
         {
             if (previousHAxis == 0.0f && currentHAxis != 0.0f)
                 player.team = (player.team & ~1) | (currentHAxis > 0.0f ? 1 : 0);
@@ -208,7 +210,7 @@ bool selection::Scene::updateStageSelection(const State& cstate, State& nstate, 
 {
     nstate = cstate;
 
-    for (auto& player : nstate.fightSelection.players)
+    for (auto& player : nstate.players)
     {
         auto& iBuffer = _inputBufferSet.get(player);
         input::PlayerInput previousInput = iBuffer[tick - 1];
@@ -220,9 +222,9 @@ bool selection::Scene::updateStageSelection(const State& cstate, State& nstate, 
         float currentHAxis = input::get::horizontalAxis(currentInput);
         if (previousHAxis == 0.0f && currentHAxis != 0.0f)
         {
-            int ns = (int)nstate.fightSelection.stage + (currentHAxis > 0.0f ? 1 : -1);
-            ns = (ns + (int)FightSelectionInfo::Stage::MAX_ENUM) % (int)FightSelectionInfo::Stage::MAX_ENUM;
-            nstate.fightSelection.stage = FightSelectionInfo::Stage(ns);
+            int ns = (int)nstate.stage + (currentHAxis > 0.0f ? 1 : -1);
+            ns = (ns + (int)fight::Stage::MAX_ENUM) % (int)fight::Stage::MAX_ENUM;
+            nstate.stage = fight::Stage(ns);
         }
 
         // confirm stage selection
@@ -233,8 +235,8 @@ bool selection::Scene::updateStageSelection(const State& cstate, State& nstate, 
         if (input::get::cancel(toggle))
         {
             nstate.currentLevel = 
-                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_2 ||
-                nstate.fightSelection.mode == FightSelectionInfo::Mode::TEAM_4 ?
+                nstate.mode == fight::Mode::TEAM_2 ||
+                nstate.mode == fight::Mode::TEAM_4 ?
                 TEAM : MODE;
             return false;
         }

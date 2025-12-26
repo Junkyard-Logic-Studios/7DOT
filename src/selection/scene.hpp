@@ -1,6 +1,7 @@
 #pragma once
 #include "../syncedScene.hpp"
-#include "../fightSelectionInfo.hpp"
+#include "../fight/mode.hpp"
+#include "../fight/stage.hpp"
 
 
 
@@ -17,7 +18,10 @@ namespace selection
 
     struct State 
     {
-        FightSelectionInfo fightSelection;
+        std::vector<Player> players;
+        fight::Mode mode = fight::Mode::LAST_MAN_STANDING;
+        fight::Stage stage = fight::Stage::SACRED_GROUND;
+
         NavigationOptions currentLevel = CHARACTERS;
     };
 

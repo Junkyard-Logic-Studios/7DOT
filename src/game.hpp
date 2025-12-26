@@ -42,7 +42,7 @@ public:
         // prepare SDL window and renderer
         SDL_Window *window;
         SDL_Renderer *renderer;
-        if (!SDL_CreateWindowAndRenderer("Game", 800, 600, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN, &window, &renderer))
+        if (!SDL_CreateWindowAndRenderer("Game", 960, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN, &window, &renderer))
             throw SDLException("Failed to create window and renderer");
         _window.reset(window);
         _renderer.reset(renderer);
