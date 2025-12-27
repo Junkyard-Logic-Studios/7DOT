@@ -16,6 +16,8 @@ enable_testing()
 add_executable(
   7dot_test
   inputBuffer.cpp
+  level.cpp
+  "../external/PugiXML/pugixml.cpp"
 )
 target_include_directories(
 	7dot_test PRIVATE

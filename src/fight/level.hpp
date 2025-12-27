@@ -2,7 +2,6 @@
 #include <inttypes.h>
 #include <fstream>
 #include "../constants.hpp"
-#include "SDL3/SDL_log.h"
 #include "pugixml.hpp"
 
 
@@ -86,7 +85,7 @@ namespace fight
                 {
                     if (p - lastSep > 1)
                     {
-                        _backgroundTiles[width * y + x] = SDL_atoi(lastSep + 1);
+                        _backgroundTiles[width * y + x] = std::atoi(lastSep + 1);
                         x++;
                     }
                     lastSep = p;
