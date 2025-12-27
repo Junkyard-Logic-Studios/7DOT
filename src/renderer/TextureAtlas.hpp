@@ -7,6 +7,7 @@
 #include <vector>
 #include <iostream>
 #include "../constants.hpp"
+#include "pugixml.hpp"
 
 
 
@@ -27,45 +28,21 @@ private:
 // Very minimal XML tag parser (enough for <SubTexture name="..." x="..." .../>)
 static std::unordered_map<std::string, SDL_Rect> parseAtlasXML(const std::string &xmlPath)
 {
+	pugi::xml_document doc;
+	pugi::xml_parse_result result = doc.load_file(xmlPath.c_str());
+	if (!result)
+		throw std::runtime_error("Failed to parse file: " + xmlPath);
+	
 	std::unordered_map<std::string, SDL_Rect> atlas;
-	std::ifstream file(xmlPath);
-	if (!file.is_open())
+	for (auto tex : doc.child("TextureAtlas").children("SubTexture"))
 	{
-		std::cerr << "Failed to open atlas XML: " << xmlPath << "\n";
-		return atlas;
-	}
-
-	std::string line;
-	while (std::getline(file, line))
-	{
-		// remove leading/trailing spaces
-		line.erase(0, line.find_first_not_of(" \t\r\n"));
-		line.erase(line.find_last_not_of(" \t\r\n") + 1);
-
-		// skip irrelevant lines
-		if (line.empty() || line.find("<SubTexture") == std::string::npos)
-			continue;
-
-		std::string name;
-		int x = 0, y = 0, w = 0, h = 0;
-
-		auto getAttr = [&](const std::string &key) -> std::string
-		{
-			size_t pos = line.find(key + "=\"");
-			if (pos == std::string::npos)
-				return "";
-			pos += key.size() + 2;
-			size_t end = line.find("\"", pos);
-			return line.substr(pos, end - pos);
-		};
-
-		name = getAttr("name");
-		x = std::stoi(getAttr("x"));
-		y = std::stoi(getAttr("y"));
-		w = std::stoi(getAttr("width"));
-		h = std::stoi(getAttr("height"));
-
-		atlas[name] = {x, y, w, h};
+		SDL_Rect rect;
+		rect.x = tex.attribute("x").as_int();
+		rect.y = tex.attribute("y").as_int();
+		rect.w = tex.attribute("width").as_int();
+		rect.h = tex.attribute("height").as_int();
+		std::string name = tex.attribute("name").as_string();
+		atlas[name] = rect;
 	}
 
 	return atlas;

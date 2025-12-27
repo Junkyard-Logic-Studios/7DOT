@@ -56,6 +56,11 @@ namespace renderer
                             level._backgroundTiles[level.width * y + x], x, y);
 
             // foreground
+            for (int y = 0; y < level.height; y++)
+                for (int x = 0; x < level.width; x++)
+                    if (level._solidBits[y] & (1ul << x))
+                        _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname,
+                            level._solidTiles[level.width * y + x], x, y);
 
             SDL_RenderPresent(_sdlRenderer);
         }

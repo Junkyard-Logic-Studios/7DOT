@@ -3,6 +3,7 @@
 #include <fstream>
 #include "../constants.hpp"
 #include "SDL3/SDL_log.h"
+#include "pugixml.hpp"
 
 
 
@@ -14,116 +15,92 @@ namespace fight
         std::size_t width = 0;
         std::size_t height = 0;
 
-        uint64_t* _backgroundBits = nullptr;
-        int8_t* _backgroundTiles = nullptr;
         uint64_t* _solidBits = nullptr;
         int8_t* _solidTiles = nullptr;
+        uint64_t* _backgroundBits = nullptr;
+        int8_t* _backgroundTiles = nullptr;
 
-        std::string path;
 
-
-        inline Level(const std::string& oelPath) :
-            path(oelPath)
+        inline Level(const std::string& oelPath)
         {
-            SDL_LogInfo(0, "loading level: %s", oelPath.c_str());
-
-            std::ifstream file(oelPath);
-            if (!file.is_open())
-                throw std::runtime_error(oelPath + " - failed to open file");
-
-            std::string line;
-            auto getAttr = [&](const std::string &key) -> std::string
-            {
-                size_t pos = line.find(key + "=\"");
-                if (pos == std::string::npos)
-                    return "";
-                pos += key.size() + 2;
-                size_t end = line.find("\"", pos);
-                return line.substr(pos, end - pos);
-            };
+            pugi::xml_document doc;
+            pugi::xml_parse_result result = doc.load_file(oelPath.c_str());
+            if (!result)
+                throw std::runtime_error("Failed to parse file: " + oelPath);
             
-            // get width and height
-            std::getline(file, line);
-            width = std::stoi(getAttr("width")) / TILESIZE;
-            height = std::stoi(getAttr("height")) / TILESIZE;
+            auto level = doc.child("level");
 
-            SDL_LogInfo(0, "-> width: %lu, height: %lu", width, height);
+            width = level.attribute("width").as_ullong() / TILESIZE;
+            height = level.attribute("height").as_ullong() / TILESIZE;
 
-            _backgroundBits = new uint64_t[(width + 63) / 64 * height];
-            _backgroundTiles = new int8_t[width * height];
             _solidBits = new uint64_t[(width + 63) / 64 * height];
             _solidTiles = new int8_t[width * height];
+            _backgroundBits = new uint64_t[(width + 63) / 64 * height];
+            _backgroundTiles = new int8_t[width * height];
             
-            memset(_backgroundBits, 0, (width + 63) / 64 * height * 8);
-            memset(_backgroundTiles, -1, width * height);
             memset(_solidBits, 0, (width + 63) / 64 * height * 8);
             memset(_solidTiles, -1, width * height);
+            memset(_backgroundBits, 0, (width + 63) / 64 * height * 8);
+            memset(_backgroundTiles, -1, width * height);
 
-            // fill background bitmap
-            {
-                std::size_t x, y = 0;
-                do
-                {
-                    std::getline(file, line);
-                    if (y == 0)
-                        line = line.substr(line.find(">") + 1);
-
-                    for (x = 0; x < width; x++)
-                        _backgroundBits[(width + 63) / 64 * y + x / 64] |= 
-                            (line[x] == '1' ? 1ul : 0ul) << (x % 64);
-                    y++;
-                }
-                while (line.find("</BG>") == std::string::npos);
-            }
-
-            // fill background tiles
-            {
-                std::getline(file, line);
-                std::size_t y = 0;
-                do
-                {
-                    std::getline(file, line);
-                    std::size_t end = std::min(line.size(), line.find("</BGTiles>"));
-                    for (std::size_t from = 0, x = 0; from < end; x++)
-                    {
-                        std::size_t to = std::min(end, line.find(',', from));
-                        _backgroundTiles[width * y + x] = std::stoi(line.substr(from, to - from));
-                        from = to + 1;
-                    }
-                    y++;
-                }
-                while (line.find("</BGTiles>") == std::string::npos);
-            }
+            const pugi::char_t* p;
 
             // fill foreground bitmap
+            p = level.child("Solids").text().as_string();
+            for (std::size_t x = 0, y = 0; *p != '\0'; x++, p++)
             {
-                std::size_t x, y = 0;
-                do
+                if (*p == '\n')
                 {
-                    std::getline(file, line);
-                    if (y == 0)
-                        line = line.substr(line.find(">") + 1);
-
-                    for (x = 0; x < width; x++)
-                        _solidBits[(width + 63) / 64 * y + x / 64] |= 
-                            (line[x] == '1' ? 1ul : 0ul) << (x % 64);
+                    x = 0;
+                    p++;
                     y++;
                 }
-                while (line.find("</Solids>") == std::string::npos);
+                _solidBits[(width + 63) / 64 * y + x / 64] |= 
+                    (*p == '1' ? 1ul : 0ul) << (x % 64);
             }
 
             // fill foreground tiles
             {
-
             }
 
+            // fill background bitmap
+            p = level.child("BG").text().as_string();
+            for (std::size_t x = 0, y = 0; *p != '\0'; x++, p++)
+            {
+                if (*p == '\n')
+                {
+                    x = 0;
+                    p++;
+                    y++;
+                }
+                _backgroundBits[(width + 63) / 64 * y + x / 64] |= 
+                    (*p == '1' ? 1ul : 0ul) << (x % 64);
+            }
 
-            file.close();
+            // fill background tiles
+            p = level.child("BGTiles").text().as_string();
+            const pugi::char_t* lastSep = p;
+            for (std::size_t x = 0, y = 0; *p != '\0'; p++)
+            {
+                if (*p == ',' || *p == '\n')
+                {
+                    if (p - lastSep > 1)
+                    {
+                        _backgroundTiles[width * y + x] = SDL_atoi(lastSep + 1);
+                        x++;
+                    }
+                    lastSep = p;
+                }
+                if (*p == '\n')
+                {
+                    x = 0;
+                    y++;
+                }
+            }
         }
 
         inline ~Level()
         {
-            SDL_LogInfo(0, "unloading level: %s", path.c_str());
             delete _backgroundBits;
             delete _backgroundTiles;
             delete _solidBits;
