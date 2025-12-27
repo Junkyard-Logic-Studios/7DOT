@@ -20,8 +20,9 @@ add_executable(
   "../external/PugiXML/pugixml.cpp"
 )
 target_include_directories(
-	7dot_test PRIVATE
-	"../src"
+  7dot_test PRIVATE
+  "../src"
+  "../external/PugiXML"
   "${CMAKE_BINARY_DIR}"
 )
 target_link_libraries(

@@ -17,8 +17,8 @@ public:
         
         for (auto& entry : std::filesystem::recursive_directory_iterator(ASSET_DIR "Levels"))
             if (entry.path().extension() == ".oel")
-                paths.push_back(entry.path().string());
-        
+               paths.push_back(entry.path().string());
+            
         std::sort(paths.begin(), paths.end());
 
         return paths;
@@ -41,12 +41,10 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(LevelTestSuite::getAllFilePaths()),
     [](const testing::TestParamInfo<LevelTestSuite::ParamType>& info)
     {
-        std::string name = info.param;
-        auto from = name.find_last_of('-') + 2;
-        auto to = name.find_last_of(".oel") - 3;
-        name = name.substr(from, to - from);
-        name.erase(name.find_last_of('/'), 1);
+        std::filesystem::path p(info.param);
+        std::string name = p.parent_path().filename().string() + p.stem().string();
         name.erase(std::remove_if(name.begin(), name.end(), isspace), name.end());
+        name = name.substr(name.find('-') + 1);
         return name;
     }
 );
