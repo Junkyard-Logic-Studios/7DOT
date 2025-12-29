@@ -36,7 +36,7 @@ namespace fight
         std::vector<int8_t> insideBottomLeft;
         std::vector<int8_t> insideBottomRight;
 
-        std::vector<int8_t>& getTileOptions(uint8_t freeNeighbors)
+        int8_t getTile(uint8_t freeNeighbors)
         {
             std::vector<int8_t>* map[] = 
             {
@@ -58,15 +58,17 @@ namespace fight
                 &single
             };
 
-            return   freeNeighbors != 0b1000'0000 ?
-                    (freeNeighbors != 0b0100'0000 ?
-                    (freeNeighbors != 0b0010'0000 ?
-                    (freeNeighbors != 0b0001'0000 ?
+            auto& v = freeNeighbors != 0b1000'0000 ?
+                     (freeNeighbors != 0b0100'0000 ?
+                     (freeNeighbors != 0b0010'0000 ?
+                     (freeNeighbors != 0b0001'0000 ?
                         *map[freeNeighbors & 0b1111] :
                         insideTopLeft) :
                         insideTopRight) :
                         insideBottomLeft) :
                         insideBottomRight;
+
+            return v[rand() % v.size()];
         }
     };
 
@@ -77,13 +79,14 @@ namespace fight
         // parse tileset data XML
         if (tilesets.empty())
         {
+            // load document
             pugi::xml_document doc;
             const char* path = ASSET_DIR "Atlas/GameData/tilesetData.xml";
             pugi::xml_parse_result result = doc.load_file(path);
             if (!result)
                 throw std::runtime_error("Failed to parse file: " + std::string(path));
 
-            std::size_t index = 0;
+            // iterate over tilesets
             for (auto& child : doc.child("TilesetData").children("Tileset"))
             {
                 std::string id = child.attribute("id").as_string();
@@ -172,15 +175,13 @@ namespace fight
             _backgroundTiles = new int8_t[width * height];
             
             memset(_solidBits, 0, (width + 63) / 64 * height * 8);
-            memset(_solidTiles, -1, width * height);
             memset(_backgroundBits, 0, (width + 63) / 64 * height * 8);
-            memset(_backgroundTiles, -1, width * height);
 
             // get tilesets
             std::string tilesetID = std::filesystem::path(oelPath).parent_path().filename();
             tilesetID = tilesetID.substr(tilesetID.find('-') + 1);
             auto& solidTileset = getTileset(tilesetID);
-            auto& backgroundTileset = getTileset(tilesetID);
+            auto& backgroundTileset = getTileset(tilesetID + "BG");
 
             auto fnFreeBitmapNeighbors = [&](uint64_t* bitmap, std::size_t xc, std::size_t yc) -> uint8_t
             {
@@ -223,8 +224,7 @@ namespace fight
                 for (std::size_t x = 0; x < width; x++)
                 {                    
                     uint8_t freeN = fnFreeBitmapNeighbors(_solidBits, x, y);
-                    auto& v = solidTileset.getTileOptions(freeN);
-                    _solidTiles[width * y + x] = v[rand() % v.size()];
+                    _solidTiles[width * y + x] = solidTileset.getTile(freeN);
                 }
 
             // fill background bitmap
@@ -242,6 +242,15 @@ namespace fight
             }
 
             // fill background tiles
+            for (std::size_t y = 0; y < height; y++)
+                for (std::size_t x = 0; x < width; x++)
+                {
+                    uint8_t freeN = fnFreeBitmapNeighbors(_solidBits, x, y)
+                                  & fnFreeBitmapNeighbors(_backgroundBits, x, y);
+                    _backgroundTiles[width * y + x] = backgroundTileset.getTile(freeN);
+                }
+
+            // add special background tiles
             p = level.child("BGTiles").text().as_string();
             const pugi::char_t* lastSep = p;
             for (std::size_t x = 0, y = 0; *p != '\0'; p++)
@@ -250,7 +259,9 @@ namespace fight
                 {
                     if (p - lastSep > 1)
                     {
-                        _backgroundTiles[width * y + x] = std::atoi(lastSep + 1);
+                        int val = std::atoi(lastSep + 1);
+                        if (val != -1)
+                            _backgroundTiles[width * y + x] = val;
                         x++;
                     }
                     lastSep = p;
@@ -265,10 +276,10 @@ namespace fight
 
         inline ~Level()
         {
-            delete _backgroundBits;
-            delete _backgroundTiles;
-            delete _solidBits;
-            delete _solidTiles;
+            delete[] _backgroundBits;
+            delete[] _backgroundTiles;
+            delete[] _solidBits;
+            delete[] _solidTiles;
         }
     };
 
