@@ -44,7 +44,7 @@ void fight::Scene::_activate(SceneContext& context)
     std::sort(files.begin(), files.end());
     _levels.reserve(files.size());
     for (auto& file : files)
-        _levels.emplace_back(file);
+        _levels.emplace_back(file.c_str());
 }
 
 void fight::Scene::_deactivate()

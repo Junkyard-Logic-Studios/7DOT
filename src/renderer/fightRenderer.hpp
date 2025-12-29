@@ -45,22 +45,22 @@ namespace renderer
             // backdrop
             _bgAtlas.draw(_sdlRenderer, "daySky", &screenRect);
 
-            // background
+            // tileset name
             std::string tsname(fight::StageName(_scene.getStage()));
             tsname[0] = std::tolower(tsname[0]);
             tsname.erase(std::remove_if(tsname.begin(), tsname.end(), isspace), tsname.end());
-            for (int y = 0; y < level.height; y++)
-                for (int x = 0; x < level.width; x++)
-                    if (level._backgroundBits[y] & (1ul << x))
-                        _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname + "BG", 
-                            level._backgroundTiles[level.width * y + x], x, y);
+            
+            // background
+            for (int y = 0; y < level.getHeight(); y++)
+                for (int x = 0; x < level.getWidth(); x++)
+                    _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname + "BG",
+                        level.getBackgroundAt(x, y), x, y);
 
             // foreground
-            for (int y = 0; y < level.height; y++)
-                for (int x = 0; x < level.width; x++)
-                    if (level._solidBits[y] & (1ul << x))
-                        _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname,
-                            level._solidTiles[level.width * y + x], x, y);
+            for (int y = 0; y < level.getHeight(); y++)
+                for (int x = 0; x < level.getWidth(); x++)
+                    _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname,
+                        level.getSolidAt(x, y), x, y);
 
             SDL_RenderPresent(_sdlRenderer);
         }

@@ -127,16 +127,16 @@ inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, 
 
 inline void TextureAtlas::drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, int x, int y)
 {
+	if (index < 0)
+		return;
+	
 	auto it = atlas.find(name);
 	if (it == atlas.end())
 	{
 		std::cerr << "Sprite not found in atlas: " << name << "\n";
 		return;
 	}
-
-	if (index < 0)
-		index = 0;
-
+	
 	const SDL_Rect& r = it->second;
 	int iw = index % (r.w / TILESIZE);
 	int ih = index / (r.w / TILESIZE);

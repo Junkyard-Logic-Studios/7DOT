@@ -16,7 +16,7 @@ enable_testing()
 add_executable(
   7dot_test
   inputBuffer.cpp
-  level.cpp
+  level.cpp "../src/fight/level.cpp"
   "../external/PugiXML/pugixml.cpp"
 )
 target_include_directories(

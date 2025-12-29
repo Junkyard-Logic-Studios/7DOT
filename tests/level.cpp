@@ -1,8 +1,8 @@
 #include <filesystem>
 #include <vector>
 #include <gtest/gtest.h>
+#include "constants.hpp"
 #include "fight/level.hpp"
-using namespace fight;
 
 
 
@@ -28,10 +28,10 @@ public:
 
 TEST_P(LevelTestSuite, ConstructorTest)
 {
-    Level level(GetParam());
+    fight::Level level(GetParam().c_str());
 
-    ASSERT_EQ(level.width, 32);
-    ASSERT_EQ(level.height, 24);
+    ASSERT_EQ(level.getWidth(), 32);
+    ASSERT_EQ(level.getHeight(), 24);
 }
 
 
