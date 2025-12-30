@@ -1,6 +1,7 @@
 #pragma once
 #include <inttypes.h>
 #include <cstddef>
+#include "stage.hpp"
 
 
 
@@ -10,7 +11,7 @@ namespace fight
     class Level
     {
     public:
-        Level(const char* oelPath);
+        Level(Stage stage, const char* oelPath);
         ~Level();
 
         std::size_t getWidth() const;

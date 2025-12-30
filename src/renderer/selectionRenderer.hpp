@@ -135,7 +135,7 @@ namespace renderer
                 fWriteLine("[ Stage ]");
                 {
                     char temp[32];
-                    SDL_snprintf(temp, 32, "< %s >", fight::StageName(_state.stage));
+                    SDL_snprintf(temp, 32, "< %s >", fight::stageToName(_state.stage));
                     fWriteLine(temp);
                 }
                 break;

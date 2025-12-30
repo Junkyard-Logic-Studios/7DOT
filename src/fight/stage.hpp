@@ -22,7 +22,8 @@ namespace fight
         MAX_ENUM
     };
 
-    inline const char* StageName(Stage stage)
+
+    inline const char* stageToName(Stage stage)
     {
         switch (stage)
         {
@@ -40,6 +41,52 @@ namespace fight
         case Stage::ASCENSION:      return "Ascension";
         default: return "[Unknown Stage]";
         };   
+    }
+
+
+    inline Stage stageFromName(const char* name)
+    {
+        auto fnHash = [](const char* str) constexpr -> int
+        {
+            int i = 1;
+            while (*str != '\0') 
+            {
+                char c = *str;
+                c += (c >= 'A' && c <= 'Z') * ('a' - 'A');
+                i *= (*str != ' ') * (long int)c + 1;
+                str++;
+            }
+            return i;
+        };
+
+        switch (fnHash(name))
+        {
+        case fnHash("SacredGround"):
+        case fnHash("SacredGroundBG"):  return Stage::SACRED_GROUND;
+        case fnHash("TwilightSpire"):
+        case fnHash("TwilightSpireBG"): return Stage::TWILIGHT_SPIRE;
+        case fnHash("Backfire"):
+        case fnHash("BackfireBG"):      return Stage::BACKFIRE;
+        case fnHash("Flight"):
+        case fnHash("FlightBG"):        return Stage::FLIGHT;
+        case fnHash("Mirage"):
+        case fnHash("MirageBG"):        return Stage::MIRAGE;
+        case fnHash("Thornwood"):
+        case fnHash("ThornwoodBG"):     return Stage::THORNWOOD;
+        case fnHash("FrostfangKeep"):
+        case fnHash("FrostfangKeepBG"): return Stage::FROSTFANG_KEEP;
+        case fnHash("KingsCourt"):
+        case fnHash("KingsCourtBG"):    return Stage::KINGS_COURT;
+        case fnHash("SunkenCity"):
+        case fnHash("SunkenCityBG"):    return Stage::SUNKEN_CITY;
+        case fnHash("Moonstone"):
+        case fnHash("MoonstoneBG"):     return Stage::MOONSTONE;
+        case fnHash("TowerForge"):
+        case fnHash("TowerForgeBG"):    return Stage::TOWERFORGE;
+        case fnHash("Ascension"):
+        case fnHash("AscensionBG"):     return Stage::ASCENSION;
+        default: return Stage::MAX_ENUM;
+        }
     }
 
 };  // end namespace fight

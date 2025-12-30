@@ -34,7 +34,7 @@ void fight::Scene::_activate(SceneContext& context)
     auto dir = std::filesystem::path(ASSET_DIR "Levels");
     char num[3];
     SDL_snprintf(num, 3, "%02i", int(_stage));
-    dir /= std::string(num) + " - " + StageName(_stage);
+    dir /= std::string(num) + " - " + stageToName(_stage);
 
     std::vector<std::string> files;
     for (auto& entry : std::filesystem::directory_iterator(dir))
@@ -44,7 +44,7 @@ void fight::Scene::_activate(SceneContext& context)
     std::sort(files.begin(), files.end());
     _levels.reserve(files.size());
     for (auto& file : files)
-        _levels.emplace_back(file.c_str());
+        _levels.emplace_back(_stage, file.c_str());
 }
 
 void fight::Scene::_deactivate()

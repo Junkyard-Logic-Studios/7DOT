@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include "constants.hpp"
 #include "fight/level.hpp"
+using namespace fight;
 
 
 
@@ -28,7 +29,9 @@ public:
 
 TEST_P(LevelTestSuite, ConstructorTest)
 {
-    fight::Level level(GetParam().c_str());
+    std::string name = std::filesystem::path(GetParam()).parent_path().filename().string();
+    Stage stage = stageFromName(name.substr(name.find('-') + 1).c_str());
+    Level level(stage, GetParam().c_str());
 
     ASSERT_EQ(level.getWidth(), 32);
     ASSERT_EQ(level.getHeight(), 24);

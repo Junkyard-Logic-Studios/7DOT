@@ -46,7 +46,7 @@ namespace renderer
             _bgAtlas.draw(_sdlRenderer, "daySky", &screenRect);
 
             // tileset name
-            std::string tsname(fight::StageName(_scene.getStage()));
+            std::string tsname(fight::stageToName(_scene.getStage()));
             tsname[0] = std::tolower(tsname[0]);
             tsname.erase(std::remove_if(tsname.begin(), tsname.end(), isspace), tsname.end());
             

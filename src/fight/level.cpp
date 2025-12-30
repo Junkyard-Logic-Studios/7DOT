@@ -1,4 +1,5 @@
 #include "level.hpp"
+#include <cstring>
 #include <unordered_map>
 #include <vector>
 #include <filesystem>
@@ -6,7 +7,6 @@
 #include "../constants.hpp"
 #include "stage.hpp"
 #include "pugixml.hpp"
-#include <iostream>
 
 
 
@@ -70,12 +70,13 @@ struct Tileset
 };
 
 
-inline Tileset& getTileset(std::string tilesetID)
+inline Tileset& getTileset(fight::Stage stage, bool background = false)
 {
-    static std::unordered_map<std::string, Tileset> tilesets;
+    static std::unordered_map<fight::Stage, Tileset> fgTilesets;
+    static std::unordered_map<fight::Stage, Tileset> bgTilesets;
 
     // parse tileset data XML
-    if (tilesets.empty())
+    if (fgTilesets.empty())
     {
         // load document
         pugi::xml_document doc;
@@ -87,9 +88,8 @@ inline Tileset& getTileset(std::string tilesetID)
         // iterate over tilesets
         for (auto& child : doc.child("TilesetData").children("Tileset"))
         {
-            std::string id = child.attribute("id").as_string();
-            for (auto& c : id)
-                c = tolower(c);
+            auto id = child.attribute("id").as_string();
+            fight::Stage st = fight::stageFromName(id);
             
             auto fnNodeContent = [](const pugi::xml_node node) -> std::vector<int8_t>
             {
@@ -131,22 +131,20 @@ inline Tileset& getTileset(std::string tilesetID)
             tileset.insideBottomLeft       = fnNodeContent(child.child("InsideBottomLeft"));
             tileset.insideBottomRight      = fnNodeContent(child.child("InsideBottomRight"));
             
-            tilesets[id] = tileset;
+            if (strstr(id, "BG") == nullptr)
+                fgTilesets[st] = tileset;
+            else
+                bgTilesets[st] = tileset;
         }
     }
 
-    for (auto& c : tilesetID)
-        c = tolower(c);
-
-    tilesetID.erase(std::remove_if(tilesetID.begin(), 
-        tilesetID.end(), isspace), tilesetID.end());
-
-    return tilesets.at(tilesetID);
+    return background ? bgTilesets[stage] : fgTilesets[stage];
 }
 
 
-fight::Level::Level(const char* oelPath)
+fight::Level::Level(Stage stage, const char* oelPath)
 {
+    // load level XML
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(oelPath);
     if (!result)
@@ -158,7 +156,7 @@ fight::Level::Level(const char* oelPath)
     _width = level.attribute("width").as_ullong() / TILESIZE;
     _height = level.attribute("height").as_ullong() / TILESIZE;
     
-    // init arrays
+    // initialize arrays
     _solidBits = new uint64_t[(_width + 63) / 64 * _height];
     _solidTiles = new int8_t[_width * _height];
     _backgroundBits = new uint64_t[(_width + 63) / 64 * _height];
@@ -168,11 +166,10 @@ fight::Level::Level(const char* oelPath)
     std::fill(_backgroundBits, _backgroundBits + (_width + 63) / 64 * _height, 0);
 
     // get tilesets
-    std::string tilesetID = std::filesystem::path(oelPath).parent_path().filename();
-    tilesetID = tilesetID.substr(tilesetID.find('-') + 1);
-    auto& solidTileset = getTileset(tilesetID);
-    auto& backgroundTileset = getTileset(tilesetID + "BG");
+    auto& solidTileset = getTileset(stage, false);
+    auto& backgroundTileset = getTileset(stage, true);
 
+    // function to check occupation of neighboring cells in a bitmap
     auto fnFreeBitmapNeighbors = [&](uint64_t* bitmap, std::size_t xc, std::size_t yc) -> uint8_t
     {
         std::size_t xl = (xc + _width - 1) % _width;
