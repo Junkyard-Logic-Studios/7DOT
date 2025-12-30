@@ -53,8 +53,24 @@ void fight::Scene::_deactivate()
 }
 
 _Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& givenState, State& followingState, tick_t tick)
-{ 
-    return tick % (3000 / MS_PER_TICK) ? 
-        UpdateReturnStatus::STAY : 
-        UpdateReturnStatus::SWITCH_SELECTION;
+{
+    followingState = givenState;
+
+    for (auto& player : _players)
+    {
+        auto& iBuffer = _inputBufferSet.get(player);
+        input::PlayerInput previousInput = iBuffer[tick - 1];
+        input::PlayerInput currentInput = iBuffer[tick];
+        input::PlayerInput toggle = ~previousInput & currentInput;
+
+        // next level
+        if (input::get::jump(toggle))
+            followingState.levelIndex = (givenState.levelIndex + 1) % _levels.size();
+
+        // quit stage
+        if (input::get::cancel(toggle))
+            return UpdateReturnStatus::SWITCH_SELECTION;
+    }
+
+    return UpdateReturnStatus::STAY;
 }

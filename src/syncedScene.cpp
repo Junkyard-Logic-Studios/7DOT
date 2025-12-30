@@ -4,21 +4,25 @@
 
 
 
+namespace selection
+{
+    class Scene;
+};
+
 template<typename S>
 void _SyncedScene<S>::activate(SceneContext& context)
 {
     _inputBufferSet = input::InputBufferSet(context.knownHosts);
     _startTime = context.startTime;
 
-    // start with state where scene last left off
-    _stateBuffer[_startTime % STATE_BUFFER_SIZE] = 
-        _stateBuffer[_latestValid % STATE_BUFFER_SIZE];
-    _latestValid = _startTime;
+    if (dynamic_cast<selection::Scene*>(this))
+        // start with state where scene last left off
+        _stateBuffer[_startTime % STATE_BUFFER_SIZE] = _stateBuffer[_latestValid % STATE_BUFFER_SIZE];
+    else
+        // start scene from default state
+        _stateBuffer[_startTime % STATE_BUFFER_SIZE] = {};
 
-    // TODO: reasonable choice between these
-    //// start scene from default state
-    //_stateBuffer[_startTime % STATE_BUFFER_SIZE] = {};
-    //_latestValid = _startTime;
+    _latestValid = _startTime;
 
     _activate(context);
 }
