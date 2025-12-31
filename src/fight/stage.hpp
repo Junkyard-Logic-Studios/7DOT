@@ -53,7 +53,7 @@ namespace fight
             {
                 char c = *str;
                 c += (c >= 'A' && c <= 'Z') * ('a' - 'A');
-                i *= (*str != ' ') * (long int)c + 1;
+		i = ((long long int)i * (long long int)((*str != ' ') * c + 1)) & 0xffff'ffff;
                 str++;
             }
             return i;
