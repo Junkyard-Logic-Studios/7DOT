@@ -24,7 +24,7 @@ void _SyncedScene<S>::activate(SceneContext& context)
 
     _latestValid = _startTime;
 
-    _activate(context);
+    _activate(context, _stateBuffer[_startTime % STATE_BUFFER_SIZE]);
 }
 
 template<typename S>

@@ -16,7 +16,7 @@ namespace fight
     struct State
     {
         uint8_t levelIndex = 0;
-        Archer::State archers[64];
+        std::vector<Archer> archers;
         // arrows
         // chests
         // special effects
@@ -34,7 +34,7 @@ namespace fight
         const Level& getLevel(std::size_t index) const;
 
     protected:
-        void _activate(SceneContext& context);
+        void _activate(SceneContext& context, State& startState);
         void _deactivate();
         UpdateReturnStatus computeFollowingState(
             const State& givenState, State& followingState, tick_t tick);
@@ -44,7 +44,8 @@ namespace fight
         fight::Mode _mode;
         fight::Stage _stage;
         std::vector<Level> _levels;
-        std::vector<Archer> _archers;
+
+        void _initNewLevel(State& state);
     };
 
 };  // end namespace core

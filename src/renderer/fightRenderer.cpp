@@ -131,5 +131,10 @@ void renderer::FightRenderer::render()
             _atlas.drawTile(_sdlRenderer, "tilesets/" + tsname,
                 level.getSolidAt(x, y), x, y);
 
+    // archers
+    for (const auto& archer : _state.archers)
+        _atlas.draw(_sdlRenderer, "arrows/laserArrow", archer.position.x * 3.0, 
+            archer.position.y * 3.0, 3.0f, !archer.isFacingRight);
+
     SDL_RenderPresent(_sdlRenderer);
 }

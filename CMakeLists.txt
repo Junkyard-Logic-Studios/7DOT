@@ -27,6 +27,9 @@ set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 add_subdirectory(external/SDL EXCLUDE_FROM_ALL)
 
+# add GLM
+add_subdirectory(external/glm)
+
 # add own source directory
 add_subdirectory(src)
 

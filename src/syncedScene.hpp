@@ -34,7 +34,7 @@ protected:
     input::InputBufferSet _inputBufferSet {{}};
     std::unique_ptr<renderer::_Renderer<S>> _renderer;
     
-    inline virtual void _activate(SceneContext& context) {};
+    inline virtual void _activate(SceneContext& context, S& startState) {};
     inline virtual void _deactivate() {};
     virtual UpdateReturnStatus computeFollowingState(
         const S& givenState, S& followingState, tick_t tick) = 0;

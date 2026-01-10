@@ -33,7 +33,7 @@ namespace selection
         Scene(Game& game);
 
     protected:
-        void _activate(SceneContext& context);
+        void _activate(SceneContext& context, State& startState);
         UpdateReturnStatus computeFollowingState(
             const State& givenState, State& followingState, tick_t tick);
 

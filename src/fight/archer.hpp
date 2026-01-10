@@ -1,30 +1,21 @@
 #pragma once
 #include <inttypes.h>
+#include "glm/vec2.hpp"
 
 
 
 namespace fight
 {
 
-    class Archer
+    struct Archer 
     {
-    public:
-        struct State 
-        {
-            float posX;
-            float posY;
+        glm::vec2 position;
+        glm::vec2 velocity;
 
-            float velX;
-            float velY;
-
-            uint32_t isFacingRight : 1;
-            uint32_t isAlive : 1;
-            uint32_t isCrouching : 1;
-            // ...
-        };
-
-    private:
-        // player / input device reference
+        uint32_t isFacingRight : 1;
+        uint32_t isAlive : 1;
+        uint32_t isCrouching : 1;
+        // ...
     };
 
 };  // end namespace core

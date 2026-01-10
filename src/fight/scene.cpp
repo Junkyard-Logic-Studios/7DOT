@@ -23,7 +23,7 @@ fight::Stage fight::Scene::getStage() const
 const fight::Level& fight::Scene::getLevel(std::size_t index) const
     { return _levels[index]; }
 
-void fight::Scene::_activate(SceneContext& context)
+void fight::Scene::_activate(SceneContext& context, State& startState)
 {
     auto& ctx = static_cast<Context&>(context);
     _players = ctx.players;
@@ -31,20 +31,28 @@ void fight::Scene::_activate(SceneContext& context)
     _stage = ctx.stage;
 
     // load levels for stage
-    auto dir = std::filesystem::path(ASSET_DIR "Levels");
-    char num[3];
-    SDL_snprintf(num, 3, "%02i", int(_stage));
-    dir /= std::string(num) + " - " + stageToName(_stage);
-
-    std::vector<std::string> files;
-    for (auto& entry : std::filesystem::directory_iterator(dir))
+    {
+        auto dir = std::filesystem::path(ASSET_DIR "Levels");
+        char num[3];
+        SDL_snprintf(num, 3, "%02i", int(_stage));
+        dir /= std::string(num) + " - " + stageToName(_stage);
+        
+        std::vector<std::string> files;
+        for (auto& entry : std::filesystem::directory_iterator(dir))
         if (entry.path().extension() == ".oel")
-            files.push_back(entry.path().string());
-
-    std::sort(files.begin(), files.end());
-    _levels.reserve(files.size());
-    for (auto& file : files)
+        files.push_back(entry.path().string());
+        
+        std::sort(files.begin(), files.end());
+        _levels.reserve(files.size());
+        for (auto& file : files)
         _levels.emplace_back(_stage, file.c_str());
+    }
+
+    // prepare starting state
+    {
+        startState.archers.resize(_players.size());
+        _initNewLevel(startState);
+    }
 }
 
 void fight::Scene::_deactivate()
@@ -72,5 +80,22 @@ _Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& give
             return UpdateReturnStatus::SWITCH_SELECTION;
     }
 
+    if (givenState.levelIndex != followingState.levelIndex)
+        _initNewLevel(followingState);
+
     return UpdateReturnStatus::STAY;
+}
+
+void fight::Scene::_initNewLevel(State& state)
+{
+    std::size_t i = 0;
+    for (auto& archer : state.archers)
+    {
+        archer.isAlive = true;
+        archer.isCrouching = false;
+        archer.position = _levels[state.levelIndex].getPlayerSpawnLocation(i);
+        archer.velocity = glm::vec2(0);
+        archer.isFacingRight = (archer.position.x < _levels[state.levelIndex].getWidth() * TILESIZE / 2);
+        i++;
+    }
 }

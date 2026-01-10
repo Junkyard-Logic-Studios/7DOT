@@ -35,6 +35,8 @@ TEST_P(LevelTestSuite, ConstructorTest)
 
     ASSERT_EQ(level.getWidth(), 32);
     ASSERT_EQ(level.getHeight(), 24);
+
+    ASSERT_NE(level.getPlayerSpawnLocation(0), level.getPlayerSpawnLocation(1));
 }
 
 

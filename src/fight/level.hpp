@@ -1,6 +1,8 @@
 #pragma once
 #include <inttypes.h>
 #include <cstddef>
+#include <vector>
+#include "glm/vec2.hpp"
 #include "stage.hpp"
 
 
@@ -24,6 +26,8 @@ namespace fight
         const int8_t* getTilesBackground() const;
         int8_t getBackgroundAt(std::size_t x, std::size_t y) const;
 
+        glm::vec2 getPlayerSpawnLocation(std::size_t index) const;
+
     private:
         std::size_t _width = 0;
         std::size_t _height = 0;
@@ -31,6 +35,7 @@ namespace fight
         int8_t* _solidTiles = nullptr;
         uint64_t* _backgroundBits = nullptr;
         int8_t* _backgroundTiles = nullptr;
+        std::vector<glm::vec2> _playerSpawns;
     };
 
 };  // end namespace fight

@@ -13,21 +13,19 @@ FetchContent_MakeAvailable(googletest)
 
 enable_testing()
 
-add_executable(
-  7dot_test
+add_executable(7dot_test
   inputBuffer.cpp
   level.cpp "../src/fight/level.cpp"
   "../external/PugiXML/pugixml.cpp"
 )
-target_include_directories(
-  7dot_test PRIVATE
-  "../src"
-  "../external/PugiXML"
-  "${CMAKE_BINARY_DIR}"
+target_include_directories(7dot_test 
+  PRIVATE "../src"
+  PRIVATE "../external/PugiXML"
+  PRIVATE "${CMAKE_BINARY_DIR}"
 )
-target_link_libraries(
-  7dot_test
-  GTest::gtest_main
+target_link_libraries(7dot_test
+  PRIVATE GTest::gtest_main
+  PUBLIC glm::glm-header-only
 )
 
 include(GoogleTest)

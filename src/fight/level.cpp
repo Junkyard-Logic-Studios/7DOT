@@ -259,6 +259,22 @@ fight::Level::Level(Stage stage, const char* oelPath)
             y++;
         }
     }
+
+    // parse player spawn locations
+    for (auto child : doc.child("level").child("Entities").children("TeamSpawnA"))
+        _playerSpawns.push_back(glm::vec2(
+            child.attribute("x").as_float(), 
+            child.attribute("y").as_float()));
+
+    for (auto child : doc.child("level").child("Entities").children("TeamSpawnB"))
+        _playerSpawns.push_back(glm::vec2(
+            child.attribute("x").as_float(), 
+            child.attribute("y").as_float()));
+    
+    for (auto child : doc.child("level").child("Entities").children("PlayerSpawn"))
+        _playerSpawns.push_back(glm::vec2(
+            child.attribute("x").as_float(), 
+            child.attribute("y").as_float()));
 }
 
 
@@ -307,3 +323,6 @@ int8_t fight::Level::getBackgroundAt(std::size_t x, std::size_t y) const
     return _backgroundBits[(_width + 63) / 64 * y + x / 64] & (1ul << (x % 64)) ?
         _backgroundTiles[_width * y + x] : -1;
 }
+
+glm::vec2 fight::Level::getPlayerSpawnLocation(std::size_t index) const
+    { return _playerSpawns.at(index % _playerSpawns.size()); }

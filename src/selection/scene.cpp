@@ -12,7 +12,7 @@ selection::Scene::Scene(Game& game) :
     _renderer.reset(static_cast<renderer::_Renderer<State>*>(renderer));
 }
 
-void selection::Scene::_activate(SceneContext& context)
+void selection::Scene::_activate(SceneContext& context, State& startState)
 {
     _knownHosts = context.knownHosts;
 }
