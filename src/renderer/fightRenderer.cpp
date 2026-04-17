@@ -1,8 +1,32 @@
 #include "fightRenderer.hpp"
 #include "pugixml.hpp"
 #include <algorithm>
+#include <cmath>
 #include <unordered_map>
 #include <vector>
+
+
+
+namespace
+{
+    constexpr float RENDER_SCALE = 3.0f;
+
+    // Renderer-side nudges while the asset metadata/parser settles.
+    constexpr float HEAD_X_OFFSET = 0.0f;
+    constexpr float HEAD_Y_OFFSET = 0.0f;
+    constexpr float BOW_X_OFFSET = 0.0f;
+    constexpr float BOW_Y_OFFSET = 0.0f;
+
+    float partWorldX(const renderer::SpriteDef& sprite, const glm::vec2& worldPosition,
+        bool fliphoriz, float localXOffset)
+    {
+        float localX = sprite.x + localXOffset;
+        if (fliphoriz)
+            return worldPosition.x - localX - (sprite.frameWidth - sprite.originX);
+
+        return worldPosition.x + localX - sprite.originX;
+    }
+}
 
 
 
@@ -74,6 +98,11 @@ renderer::FightRenderer::FightRenderer(
 {
     _atlas.load(_sdlRenderer, ASSET_DIR "Atlas/atlas.bmp", ASSET_DIR "Atlas/atlas.xml");
     _bgAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/bgAtlas.bmp", ASSET_DIR "Atlas/bgAtlas.xml");
+    _spriteCatalog.load(ASSET_DIR "Atlas/SpriteData/spriteData.xml");
+    _archerCatalog.load(
+        ASSET_DIR "Atlas/GameData/archerData.xml",
+        _spriteCatalog,
+        [&](const std::string& texture) { return _atlas.getRect(texture) != nullptr; });
 
     // trigger loading backgrounds
     getBackground(fight::Stage::SACRED_GROUND);
@@ -87,6 +116,203 @@ renderer::FightRenderer::~FightRenderer()
 
 void renderer::FightRenderer::pushState(State state)
     { this->_state = state; }
+
+
+std::string renderer::FightRenderer::chooseBodyAnimation(const fight::Archer& archer) const
+{
+    constexpr float epsilon = 0.01f;
+
+    if (archer.isCrouching)
+        return "duck";
+    if (archer.velocity.y < -epsilon)
+        return "jump";
+    if (archer.velocity.y > epsilon)
+        return "fall";
+    if (std::abs(archer.velocity.x) > epsilon)
+        return "run";
+
+    return "stand";
+}
+
+
+std::string renderer::FightRenderer::chooseHeadAnimation(const std::string& bodyAnimation) const
+{
+    if (bodyAnimation == "duck")
+        return "duck";
+    if (bodyAnimation == "jump")
+        return "idleJump";
+    if (bodyAnimation == "fall" || bodyAnimation == "glide")
+        return "idleFall";
+
+    return "idle";
+}
+
+
+int renderer::FightRenderer::animationFrame(const SpriteDef& sprite, const std::string& animationId) const
+{
+    const SpriteAnimation* animation = sprite.animation(animationId);
+    if (!animation || animation->frames.empty())
+        return 0;
+
+    if (animation->frames.size() == 1 || animation->delay <= 0.0f)
+        return animation->frames.front();
+
+    auto frameDurationMs = std::max<Uint64>(1, static_cast<Uint64>(std::round(animation->delay * 1000.0f)));
+    std::size_t index = SDL_GetTicks() / frameDurationMs;
+    if (animation->loop)
+        index %= animation->frames.size();
+    else
+        index = std::min(index, animation->frames.size() - 1);
+
+    return animation->frames[index];
+}
+
+
+int renderer::FightRenderer::frameOrigin(const std::vector<int>& origins, int frame, int fallback) const
+{
+    if (frame >= 0 && static_cast<std::size_t>(frame) < origins.size())
+        return origins[frame];
+
+    return fallback;
+}
+
+
+const std::string& renderer::FightRenderer::textureFor(const SpriteDef& sprite, const Player& player) const
+{
+    if (_scene.getMode() == fight::Mode::TEAM_2)
+    {
+        if (player.team == 0 && !sprite.blueTexture.empty() && _atlas.getRect(sprite.blueTexture))
+            return sprite.blueTexture;
+        if (player.team == 1 && !sprite.redTexture.empty() && _atlas.getRect(sprite.redTexture))
+            return sprite.redTexture;
+    }
+
+    return sprite.texture;
+}
+
+
+int renderer::FightRenderer::drawSpritePart(
+    const SpriteDef& sprite,
+    const std::string& animationId,
+    const glm::vec2& worldPosition,
+    const Player& player,
+    bool fliphoriz,
+    float worldY,
+    float localXOffset,
+    float localYOffset
+) {
+    int frame = animationFrame(sprite, animationId);
+    const std::string& texture = textureFor(sprite, player);
+    if (texture.empty())
+        return frame;
+
+    float dstY = std::isnan(worldY)
+        ? worldPosition.y + sprite.y + localYOffset - sprite.originY
+        : worldY;
+    SDL_FRect dst = {
+        partWorldX(sprite, worldPosition, fliphoriz, localXOffset) * RENDER_SCALE,
+        dstY * RENDER_SCALE,
+        sprite.frameWidth * RENDER_SCALE,
+        sprite.frameHeight * RENDER_SCALE
+    };
+
+    _atlas.drawFrame(_sdlRenderer, texture, sprite.frameWidth, sprite.frameHeight, frame, &dst, fliphoriz);
+    return frame;
+}
+
+
+void renderer::FightRenderer::drawArcher(const fight::Archer& archer, const Player& player)
+{
+    if (_archerCatalog.validBaseCount() == 0)
+        return;
+
+    const ArcherSkin& skin = _archerCatalog.skinForCharacter(player.character);
+    const SpriteDef* body = _spriteCatalog.find(skin.bodySprite);
+    const SpriteDef* head = _spriteCatalog.find(skin.headNormalSprite);
+    const SpriteDef* bow = _spriteCatalog.find(skin.bowSprite);
+    if (!body || !head || !bow)
+        return;
+
+    bool fliphoriz = !archer.isFacingRight;
+    std::string bodyAnimation = chooseBodyAnimation(archer);
+    int bodyFrame = drawSpritePart(*body, bodyAnimation, archer.position, player, fliphoriz, NAN);
+
+    int headXOrigin = frameOrigin(body->headXOrigins, bodyFrame, body->originX);
+    int headYOrigin = frameOrigin(body->headYOrigins, bodyFrame, body->originY);
+
+    std::string headAnimation = chooseHeadAnimation(bodyAnimation);
+
+    auto drawHead = [&](const std::string& spriteId)
+    {
+        if (spriteId.empty())
+            return;
+
+        const SpriteDef* headPart = _spriteCatalog.find(spriteId);
+        if (!headPart)
+            return;
+
+        float headLocalX = headXOrigin - body->originX + HEAD_X_OFFSET;
+        float headY = archer.position.y + headPart->y - headYOrigin - headPart->originY + HEAD_Y_OFFSET;
+        drawSpritePart(*headPart, headAnimation, archer.position, player, fliphoriz, headY, headLocalX);
+    };
+
+    drawHead(skin.headBackSprite);
+    drawHead(skin.headNormalSprite);
+
+    if (!bow->hideBowIdle)
+        drawSpritePart(*bow, "idle", archer.position, player, fliphoriz, NAN, BOW_X_OFFSET, BOW_Y_OFFSET);
+}
+
+
+void renderer::FightRenderer::drawArcherDebug(const fight::Archer& archer)
+{
+    glm::vec2 hitboxTL = archer.hitboxTL();
+    glm::vec2 hitboxBR = archer.hitboxBR();
+    SDL_FRect hitbox = {
+        hitboxTL.x * RENDER_SCALE,
+        hitboxTL.y * RENDER_SCALE,
+        (hitboxBR.x - hitboxTL.x) * RENDER_SCALE,
+        (hitboxBR.y - hitboxTL.y) * RENDER_SCALE
+    };
+
+    SDL_SetRenderDrawColor(_sdlRenderer, 255, 0, 0, 255);
+    SDL_RenderRect(_sdlRenderer, &hitbox);
+
+    SDL_FRect origin = {
+        archer.position.x * RENDER_SCALE - 2.0f,
+        archer.position.y * RENDER_SCALE - 2.0f,
+        4.0f,
+        4.0f
+    };
+    SDL_SetRenderDrawColor(_sdlRenderer, 0, 255, 0, 255);
+    SDL_RenderFillRect(_sdlRenderer, &origin);
+
+    SDL_SetRenderDrawColor(_sdlRenderer, 255, 255, 255, 255);
+}
+
+
+void renderer::FightRenderer::drawDevBuildText(int winw)
+{
+    constexpr float padding = 8.0f;
+    const char* text = "DEV BUILD";
+    float textWidth = SDL_strlen(text) * SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+    float textHeight = SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE;
+    float boxWidth = textWidth + padding * 2.0f;
+    float boxHeight = textHeight + padding;
+    SDL_FRect background = {
+        winw - boxWidth - padding,
+        padding,
+        boxWidth,
+        boxHeight
+    };
+
+    SDL_SetRenderDrawColor(_sdlRenderer, 0, 0, 0, 255);
+    SDL_RenderFillRect(_sdlRenderer, &background);
+    SDL_SetRenderDrawColor(_sdlRenderer, 255, 255, 0, 255);
+    SDL_RenderDebugText(_sdlRenderer, background.x + padding, background.y + padding * 0.5f, text);
+    SDL_SetRenderDrawColor(_sdlRenderer, 255, 255, 255, 255);
+}
+
 
 void renderer::FightRenderer::render()
 {
@@ -132,9 +358,14 @@ void renderer::FightRenderer::render()
                 level.getSolidAt(x, y), x, y);
 
     // archers
-    for (const auto& archer : _state.archers)
-        _atlas.draw(_sdlRenderer, "arrows/laserArrow", archer.position.x * 3.0, 
-            archer.position.y * 3.0, 3.0f, !archer.isFacingRight);
+    const auto& players = _scene.getPlayers();
+    for (std::size_t i = 0; i < _state.archers.size() && i < players.size(); i++)
+    {
+        drawArcher(_state.archers[i], players[i]);
+        drawArcherDebug(_state.archers[i]);
+    }
+
+    drawDevBuildText(winw);
 
     SDL_RenderPresent(_sdlRenderer);
 }

@@ -31,6 +31,7 @@ namespace fight
         Scene(Game& game);
         Mode getMode() const;
         Stage getStage() const;
+        const std::vector<Player>& getPlayers() const;
         const Level& getLevel(std::size_t index) const;
 
     protected:

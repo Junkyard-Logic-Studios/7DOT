@@ -37,6 +37,7 @@ add_subdirectory(src)
 option(BUILD_TESTS "Build tests or not" OFF)
 if(BUILD_TESTS)
 	message(STATUS "Building tests...")
+	enable_testing()
 	add_subdirectory(tests)
 endif()
 

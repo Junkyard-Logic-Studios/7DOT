@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include "../renderer/selectionRenderer.hpp"
+#include "../renderer/ArcherCatalog.hpp"
 #include "../game.hpp"
 #include "../fight/context.hpp"
 
@@ -82,10 +83,13 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
                 // change character
                 float previousHAxis = input::get::horizontalAxis(previousInput);
                 float currentHAxis = input::get::horizontalAxis(currentInput);
+                std::size_t validCharacterCount = renderer::ArcherCatalog::defaultValidBaseCount();
                 if (previousHAxis == 0.0f && currentHAxis > 0.0f)
-                    player->character++;
+                    player->character = renderer::ArcherCatalog::offsetCharacter(
+                        player->character, 1, validCharacterCount);
                 if (previousHAxis == 0.0f && currentHAxis < 0.0f)
-                    player->character--;
+                    player->character = renderer::ArcherCatalog::offsetCharacter(
+                        player->character, -1, validCharacterCount);
 
                 // quit player selection
                 if (input::get::cancel(toggle))

@@ -14,6 +14,7 @@ namespace renderer
             _sdlWindow(window), _sdlRenderer(renderer)
         {}
 
+        virtual ~_Renderer() = default;
         virtual void pushState(ST state) = 0;
         virtual void render() = 0;
     

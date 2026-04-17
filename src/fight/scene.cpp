@@ -20,6 +20,9 @@ fight::Mode fight::Scene::getMode() const
 fight::Stage fight::Scene::getStage() const
     { return _stage; }
 
+const std::vector<Player>& fight::Scene::getPlayers() const
+    { return _players; }
+
 const fight::Level& fight::Scene::getLevel(std::size_t index) const
     { return _levels[index]; }
 

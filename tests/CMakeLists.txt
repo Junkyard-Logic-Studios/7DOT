@@ -14,8 +14,12 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(7dot_test
+  archerCatalog.cpp
   inputBuffer.cpp
   level.cpp "../src/fight/level.cpp"
+  spriteCatalog.cpp
+  "../src/renderer/ArcherCatalog.cpp"
+  "../src/renderer/SpriteCatalog.cpp"
   "../external/PugiXML/pugixml.cpp"
 )
 target_include_directories(7dot_test 
