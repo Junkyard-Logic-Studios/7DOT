@@ -22,6 +22,7 @@ namespace fight
         const uint64_t* getBitmapSolids() const;
         const int8_t* getTilesSolids() const;
         int8_t getSolidAt(std::size_t x, std::size_t y) const;
+        bool isSolidAt(int x, int y) const;
         const uint64_t* getBitmapBackground() const;
         const int8_t* getTilesBackground() const;
         int8_t getBackgroundAt(std::size_t x, std::size_t y) const;

@@ -1,10 +1,21 @@
 #include <filesystem>
 #include <algorithm>
-#include "glm/geometric.hpp"
+#include <cmath>
 #include "scene.hpp"
 #include "context.hpp"
+#include "collision.hpp"
 #include "../renderer/fightRenderer.hpp"
 #include "../game.hpp"
+
+
+namespace
+{
+    constexpr float MOVE_ACCELERATION = 1.0f;
+    constexpr float GRAVITY_ACCELERATION = MS_PER_TICK * 0.1f;
+    constexpr float JUMP_VELOCITY = -30.0f;
+    constexpr float WALL_JUMP_X_VELOCITY = 18.0f;
+    constexpr float POSITION_SCALE = MS_PER_TICK * 0.1f;
+}
 
 
 fight::Scene::Scene(Game& game) :
@@ -80,11 +91,6 @@ _Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& give
             input::PlayerInput currentInput = iBuffer[tick];
             input::PlayerInput toggle = ~previousInput & currentInput;
 
-            // movement
-            fArcher.velocity = gArcher.velocity + glm::vec2(
-                input::get::horizontalAxis(currentInput), 
-                MS_PER_TICK * .1f - 30.f * input::get::jump(toggle));                
-
             // next level
             if (input::get::shoot(toggle))
                 followingState.levelIndex = (givenState.levelIndex + 1) % _levels.size();
@@ -92,39 +98,31 @@ _Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& give
             // quit stage
             if (input::get::cancel(toggle))
                 return UpdateReturnStatus::SWITCH_SELECTION;
-        }
 
-        // collisions (super temporary)
-        {
             const auto& level = getLevel(followingState.levelIndex);
+            auto contacts = collision::contactsAt(level, gArcher);
 
-            for (std::size_t x = 0; x < level.getWidth(); x++)
-                for (std::size_t y = 0; y < level.getHeight(); y++)
+            fArcher.velocity = gArcher.velocity;
+            fArcher.velocity.x += input::get::horizontalAxis(currentInput) * MOVE_ACCELERATION;
+            fArcher.velocity.y += GRAVITY_ACCELERATION;
+
+            if (input::get::jump(toggle))
+            {
+                if (contacts.ground)
+                    fArcher.velocity.y = JUMP_VELOCITY;
+                else if (contacts.leftWall && !contacts.rightWall)
                 {
-                    bool solid = level.getSolidAt(x, y) != -1;
-                    if (!solid)
-                        continue;   // not a solid tile
-                    
-                    bool sepU = fArcher.hitboxBR().y < (y - .5f) * TILESIZE;
-                    bool sepD = fArcher.hitboxTL().y > (y + .5f) * TILESIZE;
-                    bool sepL = fArcher.hitboxBR().x < (x - .5f) * TILESIZE;
-                    bool sepR = fArcher.hitboxTL().x > (x + .5f) * TILESIZE;
-
-                    if (sepU || sepD || sepL || sepR)
-                        continue;   // separated in at least one direction
-
-                    auto v = (fArcher.position - glm::vec2(x, y) * float(TILESIZE));
-                    v *= glm::abs(v.x) > glm::abs(v.y) ? glm::vec2(1,0) : glm::vec2(0,1);
-                    fArcher.velocity += v / glm::length(v) * .5f;
-
-                    continue;
+                    fArcher.velocity.y = JUMP_VELOCITY;
+                    fArcher.velocity.x = WALL_JUMP_X_VELOCITY;
                 }
-        }
-        
-        // apply
-        {
-            // velocity
-            fArcher.position = gArcher.position + fArcher.velocity * float(MS_PER_TICK) * .1f;
+                else if (contacts.rightWall && !contacts.leftWall)
+                {
+                    fArcher.velocity.y = JUMP_VELOCITY;
+                    fArcher.velocity.x = -WALL_JUMP_X_VELOCITY;
+                }
+            }
+
+            collision::moveAndCollide(level, fArcher, POSITION_SCALE);
 
             // drag
             fArcher.velocity.x = std::max(0.0f, std::abs(fArcher.velocity.x) - float(MS_PER_TICK))

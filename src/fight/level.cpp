@@ -310,6 +310,15 @@ int8_t fight::Level::getSolidAt(std::size_t x, std::size_t y) const
 }
 
 
+bool fight::Level::isSolidAt(int x, int y) const
+{
+    if (x < 0 || y < 0 || x >= int(_width) || y >= int(_height))
+        return false;
+
+    return getSolidAt(std::size_t(x), std::size_t(y)) != -1;
+}
+
+
 const uint64_t* fight::Level::getBitmapBackground() const
     { return _backgroundBits; }
 
