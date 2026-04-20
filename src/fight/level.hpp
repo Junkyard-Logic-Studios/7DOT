@@ -9,6 +9,13 @@
 
 namespace fight
 {
+    enum class WrapMode : uint8_t
+    {
+        NONE,
+        HORIZONTAL,
+        VERTICAL,
+        BOTH
+    };
 
     class Level
     {
@@ -26,12 +33,16 @@ namespace fight
         const uint64_t* getBitmapBackground() const;
         const int8_t* getTilesBackground() const;
         int8_t getBackgroundAt(std::size_t x, std::size_t y) const;
+        WrapMode getWrapMode() const;
+        bool wrapsHorizontally() const;
+        bool wrapsVertically() const;
 
         glm::vec2 getPlayerSpawnLocation(std::size_t index) const;
 
     private:
         std::size_t _width = 0;
         std::size_t _height = 0;
+        WrapMode _wrapMode = WrapMode::NONE;
         uint64_t* _solidBits = nullptr;
         int8_t* _solidTiles = nullptr;
         uint64_t* _backgroundBits = nullptr;

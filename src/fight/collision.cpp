@@ -30,11 +30,30 @@ namespace
         return std::size_t(wrapped < 0 ? wrapped + int(size) : wrapped);
     }
 
-    bool isSolidWrappedAt(const fight::Level& level, int x, int y)
+    bool tileIndexForAxis(int index, std::size_t size, bool wraps, std::size_t& result)
     {
-        return level.getSolidAt(
-            wrapTileIndex(x, level.getWidth()),
-            wrapTileIndex(y, level.getHeight())) != -1;
+        if (wraps)
+        {
+            result = wrapTileIndex(index, size);
+            return true;
+        }
+
+        if (index < 0 || index >= int(size))
+            return false;
+
+        result = std::size_t(index);
+        return true;
+    }
+
+    bool isSolidRepeatedAt(const fight::Level& level, int x, int y)
+    {
+        std::size_t tileX = 0;
+        std::size_t tileY = 0;
+        if (!tileIndexForAxis(x, level.getWidth(), level.wrapsHorizontally(), tileX)
+            || !tileIndexForAxis(y, level.getHeight(), level.wrapsVertically(), tileY))
+            return false;
+
+        return level.getSolidAt(tileX, tileY) != -1;
     }
 
     TileRange overlappedTiles(const fight::Archer& archer)
@@ -78,7 +97,7 @@ namespace
             float tileLeft = float(level.getWidth() * TILESIZE);
             for (int y = range.minY; y <= range.maxY; y++)
                 for (int x = range.minX; x <= range.maxX; x++)
-                    if (isSolidWrappedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
+                    if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
                         tileLeft = std::min(tileLeft, float(x * TILESIZE));
 
             archer.position.x = tileLeft - fight::Archer::WIDTH / 2.0f;
@@ -90,7 +109,7 @@ namespace
             float tileRight = 0.0f;
             for (int y = range.minY; y <= range.maxY; y++)
                 for (int x = range.minX; x <= range.maxX; x++)
-                    if (isSolidWrappedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
+                    if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
                         tileRight = std::max(tileRight, float((x + 1) * TILESIZE));
 
             archer.position.x = tileRight + fight::Archer::WIDTH / 2.0f;
@@ -112,7 +131,7 @@ namespace
             float tileTop = float(level.getHeight() * TILESIZE);
             for (int y = range.minY; y <= range.maxY; y++)
                 for (int x = range.minX; x <= range.maxX; x++)
-                    if (isSolidWrappedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
+                    if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
                         tileTop = std::min(tileTop, float(y * TILESIZE));
 
             archer.position.y = tileTop - fight::Archer::HEIGHT / 2.0f;
@@ -124,7 +143,7 @@ namespace
             float tileBottom = 0.0f;
             for (int y = range.minY; y <= range.maxY; y++)
                 for (int x = range.minX; x <= range.maxX; x++)
-                    if (isSolidWrappedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
+                    if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
                         tileBottom = std::max(tileBottom, float((y + 1) * TILESIZE));
 
             archer.position.y = tileBottom + fight::Archer::HEIGHT / 2.0f;
@@ -141,7 +160,7 @@ bool fight::collision::overlapsSolid(const Level& level, const Archer& archer)
 
     for (int y = range.minY; y <= range.maxY; y++)
         for (int x = range.minX; x <= range.maxX; x++)
-            if (isSolidWrappedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
+            if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
                 return true;
 
     return false;
@@ -205,16 +224,16 @@ void fight::collision::wrapIfFullyOutside(const Level& level, Archer& archer)
     glm::vec2 tl = archer.hitboxTL();
     glm::vec2 br = archer.hitboxBR();
 
-    if (br.x < 0.0f)
+    if (level.wrapsHorizontally() && br.x < 0.0f)
         archer.position.x += worldWidth;
-    else if (tl.x > worldWidth)
+    else if (level.wrapsHorizontally() && tl.x > worldWidth)
         archer.position.x -= worldWidth;
 
     tl = archer.hitboxTL();
     br = archer.hitboxBR();
 
-    if (br.y < 0.0f)
+    if (level.wrapsVertically() && br.y < 0.0f)
         archer.position.y += worldHeight;
-    else if (tl.y > worldHeight)
+    else if (level.wrapsVertically() && tl.y > worldHeight)
         archer.position.y -= worldHeight;
 }

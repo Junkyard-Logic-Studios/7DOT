@@ -18,13 +18,16 @@ add_executable(7dot_test
   fightCollision.cpp
   inputBuffer.cpp
   level.cpp "../src/fight/collision.cpp" "../src/fight/level.cpp"
+  stageMapCatalog.cpp
   spriteCatalog.cpp
   "../src/renderer/ArcherCatalog.cpp"
   "../src/renderer/SpriteCatalog.cpp"
+  "../src/renderer/StageMapCatalog.cpp"
   "../external/PugiXML/pugixml.cpp"
 )
 target_include_directories(7dot_test 
   PRIVATE "../src"
+  PRIVATE "../external/SDL/include"
   PRIVATE "../external/PugiXML"
   PRIVATE "${CMAKE_BINARY_DIR}"
 )

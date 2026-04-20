@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <filesystem>
+#include <fstream>
 #include "constants.hpp"
 #include "fight/collision.hpp"
 #include "fight/level.hpp"
@@ -13,6 +15,23 @@ namespace
     Level sacredGround()
     {
         return Level(Stage::SACRED_GROUND, ASSET_DIR "Levels/00 - Sacred Ground/00.oel");
+    }
+
+    std::filesystem::path sacredGroundWithWrapMode(const std::string& wrapMode)
+    {
+        std::ifstream source(ASSET_DIR "Levels/00 - Sacred Ground/00.oel");
+        std::string xml{
+            std::istreambuf_iterator<char>(source),
+            std::istreambuf_iterator<char>()};
+
+        std::string from = "WrapMode=\"Both\"";
+        std::string to = "WrapMode=\"" + wrapMode + "\"";
+        xml.replace(xml.find(from), from.size(), to);
+
+        auto path = std::filesystem::temp_directory_path() / ("7dot_wrap_" + wrapMode + ".oel");
+        std::ofstream out(path);
+        out << xml;
+        return path;
     }
 }
 
@@ -165,4 +184,28 @@ TEST(FightCollisionTest, DoesNotWrapWhilePartiallyVisible)
     EXPECT_NEAR(-4.0f, archer.position.x, EPSILON);
     EXPECT_NEAR(-8.0f, archer.position.y, EPSILON);
     EXPECT_EQ(velocity, archer.velocity);
+}
+
+
+TEST(FightCollisionTest, DisabledWrapModeDoesNotRepeatTilesOrTeleport)
+{
+    auto path = sacredGroundWithWrapMode("None");
+    Level level(Stage::SACRED_GROUND, path.c_str());
+
+    Archer leftSeam {};
+    leftSeam.position = {-6.0f, 211.0f};
+    auto leftContacts = collision::contactsAt(level, leftSeam);
+    EXPECT_FALSE(leftContacts.ground);
+
+    glm::vec2 velocity = {3.0f, -4.0f};
+    Archer outside {};
+    outside.position = {-6.0f, 100.0f};
+    outside.velocity = velocity;
+    collision::wrapIfFullyOutside(level, outside);
+
+    EXPECT_NEAR(-6.0f, outside.position.x, EPSILON);
+    EXPECT_NEAR(100.0f, outside.position.y, EPSILON);
+    EXPECT_EQ(velocity, outside.velocity);
+
+    std::filesystem::remove(path);
 }

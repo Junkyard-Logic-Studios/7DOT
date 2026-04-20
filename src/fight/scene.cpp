@@ -10,11 +10,65 @@
 
 namespace
 {
-    constexpr float MOVE_ACCELERATION = 1.0f;
-    constexpr float GRAVITY_ACCELERATION = MS_PER_TICK * 0.1f;
-    constexpr float JUMP_VELOCITY = -30.0f;
-    constexpr float WALL_JUMP_X_VELOCITY = 18.0f;
-    constexpr float POSITION_SCALE = MS_PER_TICK * 0.1f;
+    constexpr float INPUT_DEAD_ZONE = 0.35f;
+    constexpr float MAX_RUN_SPEED = 1.65f;
+    constexpr float GROUND_ACCELERATION = 0.22f;
+    constexpr float AIR_ACCELERATION = 0.11f;
+    constexpr float GROUND_FRICTION = 0.30f;
+    constexpr float AIR_FRICTION = 0.035f;
+    constexpr float GRAVITY_ACCELERATION = 0.18f;
+    constexpr float JUMP_HOLD_GRAVITY_ACCELERATION = 0.07f;
+    constexpr float FAST_FALL_GRAVITY_ACCELERATION = 0.30f;
+    constexpr float MAX_FALL_SPEED = 4.4f;
+    constexpr float FAST_FALL_MAX_SPEED = 6.0f;
+    constexpr float WALL_SLIDE_MAX_FALL_SPEED = 1.25f;
+    constexpr float JUMP_VELOCITY = -4.1f;
+    constexpr float JUMP_CUT_VELOCITY = -2.0f;
+    constexpr float WALL_JUMP_X_VELOCITY = 2.35f;
+    constexpr float WALL_JUMP_AUTO_SPEED = 2.05f;
+    constexpr uint8_t JUMP_HOLD_TICKS = 12;
+    constexpr uint8_t WALL_JUMP_AUTO_MOVE_TICKS = 20;
+    constexpr float POSITION_SCALE = 1.0f;
+
+    int quantizeAxis(float value)
+    {
+        if (value > INPUT_DEAD_ZONE)
+            return 1;
+        if (value < -INPUT_DEAD_ZONE)
+            return -1;
+        return 0;
+    }
+
+    glm::ivec2 quantizeInput(input::PlayerInput input)
+    {
+        return glm::ivec2(
+            quantizeAxis(input::get::horizontalAxis(input)),
+            quantizeAxis(input::get::verticalAxis(input)));
+    }
+
+    float approach(float current, float target, float amount)
+    {
+        if (current < target)
+            return std::min(current + amount, target);
+        if (current > target)
+            return std::max(current - amount, target);
+        return current;
+    }
+
+    int wallJumpDirection(const fight::collision::Contacts& contacts)
+    {
+        if (contacts.leftWall && !contacts.rightWall)
+            return 1;
+        if (contacts.rightWall && !contacts.leftWall)
+            return -1;
+        return 0;
+    }
+
+    bool wantsWallSlide(const fight::collision::Contacts& contacts, const glm::ivec2& direction)
+    {
+        return (contacts.leftWall && direction.x < 0)
+            || (contacts.rightWall && direction.x > 0);
+    }
 }
 
 
@@ -91,44 +145,130 @@ _Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& give
             input::PlayerInput currentInput = iBuffer[tick];
             input::PlayerInput toggle = ~previousInput & currentInput;
 
-            // next level
-            if (input::get::shoot(toggle))
-                followingState.levelIndex = (givenState.levelIndex + 1) % _levels.size();
-
             // quit stage
             if (input::get::cancel(toggle))
                 return UpdateReturnStatus::SWITCH_SELECTION;
 
             const auto& level = getLevel(followingState.levelIndex);
-            auto contacts = collision::contactsAt(level, gArcher);
+            auto startingContacts = collision::contactsAt(level, gArcher);
+            glm::ivec2 moveDirection = quantizeInput(currentInput);
+            bool jumpPressed = input::get::jump(toggle);
+            bool jumpHeld = input::get::jump(currentInput);
+            bool jumpReleased = input::get::jump(previousInput) && !jumpHeld;
+            bool grounded = startingContacts.ground;
+            bool holdingWall = !grounded && wantsWallSlide(startingContacts, moveDirection);
 
+            fArcher.movementDirection = moveDirection;
+            if (moveDirection != glm::ivec2(0))
+                fArcher.aimDirection = moveDirection;
             fArcher.velocity = gArcher.velocity;
-            fArcher.velocity.x += input::get::horizontalAxis(currentInput) * MOVE_ACCELERATION;
-            fArcher.velocity.y += GRAVITY_ACCELERATION;
 
-            if (input::get::jump(toggle))
+            bool wantsCrouch = grounded && moveDirection.y > 0 && moveDirection.x == 0;
+            if (!wantsCrouch && gArcher.isCrouching)
             {
-                if (contacts.ground)
-                    fArcher.velocity.y = JUMP_VELOCITY;
-                else if (contacts.leftWall && !contacts.rightWall)
+                Archer standProbe = gArcher;
+                standProbe.isCrouching = false;
+                wantsCrouch = collision::overlapsSolid(level, standProbe);
+            }
+            fArcher.isCrouching = wantsCrouch;
+
+            if (moveDirection.x != 0)
+                fArcher.isFacingRight = moveDirection.x > 0;
+
+            if (jumpPressed)
+            {
+                int awayFromWall = wallJumpDirection(startingContacts);
+                if (grounded)
                 {
                     fArcher.velocity.y = JUMP_VELOCITY;
-                    fArcher.velocity.x = WALL_JUMP_X_VELOCITY;
+                    fArcher.jumpHoldTicks = JUMP_HOLD_TICKS;
+                    fArcher.movementState = ArcherMovementState::AIRBORNE;
+                    Archer standProbe = fArcher;
+                    standProbe.isCrouching = false;
+                    fArcher.isCrouching = collision::overlapsSolid(level, standProbe);
                 }
-                else if (contacts.rightWall && !contacts.leftWall)
+                else if (awayFromWall != 0)
                 {
                     fArcher.velocity.y = JUMP_VELOCITY;
-                    fArcher.velocity.x = -WALL_JUMP_X_VELOCITY;
+                    fArcher.velocity.x = awayFromWall * WALL_JUMP_X_VELOCITY;
+                    fArcher.jumpHoldTicks = JUMP_HOLD_TICKS;
+                    fArcher.autoMoveTicks = WALL_JUMP_AUTO_MOVE_TICKS;
+                    fArcher.autoMoveDirection = awayFromWall;
+                    fArcher.isFacingRight = awayFromWall > 0;
                 }
             }
 
-            collision::moveAndCollide(level, fArcher, POSITION_SCALE);
+            if (jumpReleased && fArcher.velocity.y < JUMP_CUT_VELOCITY)
+            {
+                fArcher.velocity.y = JUMP_CUT_VELOCITY;
+                fArcher.jumpHoldTicks = 0;
+            }
 
-            // drag
-            fArcher.velocity.x = std::max(0.0f, std::abs(fArcher.velocity.x) - float(MS_PER_TICK))
-                * (fArcher.velocity.x < 0.0 ? -1.0 : 1.0);
-            fArcher.velocity.y = std::max(0.0f, std::abs(fArcher.velocity.y) - float(MS_PER_TICK))
-                * (fArcher.velocity.y < 0.0 ? -1.0 : 1.0);
+            if (fArcher.autoMoveTicks > 0)
+            {
+                fArcher.velocity.x = approach(
+                    fArcher.velocity.x,
+                    fArcher.autoMoveDirection * WALL_JUMP_AUTO_SPEED,
+                    AIR_ACCELERATION);
+                fArcher.autoMoveTicks--;
+            }
+            else if (fArcher.isCrouching)
+            {
+                fArcher.velocity.x = approach(fArcher.velocity.x, 0.0f, GROUND_FRICTION);
+            }
+            else if (moveDirection.x != 0)
+            {
+                float acceleration = grounded ? GROUND_ACCELERATION : AIR_ACCELERATION;
+                fArcher.velocity.x = approach(fArcher.velocity.x, moveDirection.x * MAX_RUN_SPEED, acceleration);
+            }
+            else
+            {
+                float friction = grounded ? GROUND_FRICTION : AIR_FRICTION;
+                fArcher.velocity.x = approach(fArcher.velocity.x, 0.0f, friction);
+            }
+
+            float maxFallSpeed = MAX_FALL_SPEED;
+            float gravity = GRAVITY_ACCELERATION;
+            if (holdingWall && fArcher.velocity.y > 0.0f && fArcher.autoMoveTicks == 0)
+            {
+                maxFallSpeed = WALL_SLIDE_MAX_FALL_SPEED;
+                gravity = JUMP_HOLD_GRAVITY_ACCELERATION;
+            }
+            else if (!grounded && moveDirection.y > 0 && fArcher.velocity.y > 0.0f)
+            {
+                maxFallSpeed = FAST_FALL_MAX_SPEED;
+                gravity = FAST_FALL_GRAVITY_ACCELERATION;
+            }
+            else if (jumpHeld && fArcher.jumpHoldTicks > 0 && fArcher.velocity.y < 0.0f)
+            {
+                gravity = JUMP_HOLD_GRAVITY_ACCELERATION;
+            }
+
+            fArcher.velocity.y = std::min(fArcher.velocity.y + gravity, maxFallSpeed);
+            if (!jumpHeld || fArcher.velocity.y >= 0.0f)
+                fArcher.jumpHoldTicks = 0;
+            else if (fArcher.jumpHoldTicks > 0)
+                fArcher.jumpHoldTicks--;
+
+            auto endingContacts = collision::moveAndCollide(level, fArcher, POSITION_SCALE);
+            if (endingContacts.ground || endingContacts.ceiling)
+                fArcher.jumpHoldTicks = 0;
+            if (endingContacts.ground)
+                fArcher.autoMoveTicks = 0;
+
+            if (!fArcher.isAlive)
+                fArcher.movementState = ArcherMovementState::DEAD;
+            else if (endingContacts.ground)
+                fArcher.movementState = ArcherMovementState::GROUNDED;
+            else if (fArcher.autoMoveTicks == 0
+                && fArcher.velocity.y >= 0.0f
+                && wantsWallSlide(endingContacts, moveDirection))
+            {
+                fArcher.velocity.y = std::min(fArcher.velocity.y, WALL_SLIDE_MAX_FALL_SPEED);
+                fArcher.movementState = ArcherMovementState::WALL_SLIDING;
+            }
+            else
+                fArcher.movementState = ArcherMovementState::AIRBORNE;
         }
 
         i++;
@@ -150,6 +290,12 @@ void fight::Scene::_initNewLevel(State& state)
         archer.position = _levels[state.levelIndex].getPlayerSpawnLocation(i);
         archer.velocity = glm::vec2(0);
         archer.isFacingRight = (archer.position.x < _levels[state.levelIndex].getWidth() * TILESIZE / 2);
+        archer.movementDirection = glm::ivec2(0);
+        archer.aimDirection = glm::ivec2(archer.isFacingRight ? 1 : -1, 0);
+        archer.movementState = ArcherMovementState::AIRBORNE;
+        archer.jumpHoldTicks = 0;
+        archer.autoMoveTicks = 0;
+        archer.autoMoveDirection = 0;
         i++;
     }
 }

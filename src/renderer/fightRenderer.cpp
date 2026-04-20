@@ -124,12 +124,29 @@ std::string renderer::FightRenderer::chooseBodyAnimation(const fight::Archer& ar
 
     if (archer.isCrouching)
         return "duck";
+
+    switch (archer.movementState)
+    {
+        case fight::ArcherMovementState::GROUNDED:
+            if (std::abs(archer.velocity.x) > epsilon)
+                return "run";
+            return "stand";
+        case fight::ArcherMovementState::WALL_SLIDING:
+            return "glide";
+        case fight::ArcherMovementState::LEDGE_CLINGING:
+            return "ledge";
+        case fight::ArcherMovementState::DODGING:
+            return "dodge";
+        case fight::ArcherMovementState::DEAD:
+            return "fall";
+        case fight::ArcherMovementState::AIRBORNE:
+            break;
+    }
+
     if (archer.velocity.y < -epsilon)
         return "jump";
     if (archer.velocity.y > epsilon)
         return "fall";
-    if (std::abs(archer.velocity.x) > epsilon)
-        return "run";
 
     return "stand";
 }

@@ -2,10 +2,12 @@
 #include "renderer.hpp"
 #include "../selection/scene.hpp"
 #include "ArcherCatalog.hpp"
+#include "StageMapCatalog.hpp"
 #include "SpriteCatalog.hpp"
 #include "TextureAtlas.hpp"
 #include "../fight/mode.hpp"
 #include "../fight/stage.hpp"
+#include <stdexcept>
 #include <string>
 
 namespace renderer
@@ -17,6 +19,8 @@ namespace renderer
         SelectionRenderer(SDL_Window *const window, SDL_Renderer *const renderer) : _Renderer(window, renderer)
         {
             _menuAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/menuAtlas.bmp", ASSET_DIR "Atlas/menuAtlas.xml");
+            _stageMapCatalog.load(ASSET_DIR "Atlas/GameData/themeData.xml");
+            validateStageMapAtlas();
             _atlas.load(_sdlRenderer, ASSET_DIR "Atlas/atlas.bmp", ASSET_DIR "Atlas/atlas.xml");
             _spriteCatalog.load(ASSET_DIR "Atlas/SpriteData/spriteData.xml");
             _archerCatalog.load(
@@ -85,9 +89,8 @@ namespace renderer
                 break;
 
             case opt::STAGE:
-                R = {0.0f, 0.0f, (float)winw, (float)winh};
-                _menuAtlas.draw(_sdlRenderer, "mapWater", &R);
-                _menuAtlas.draw(_sdlRenderer, "mapLand", &R);
+                R = stageMapRect(winw, winh);
+                drawStageMap(R);
                 break;
             }
 
@@ -151,6 +154,7 @@ namespace renderer
                 break;
 
             case opt::STAGE:
+                drawStageIcons(stageMapRect(winw, winh));
                 y = winh * 0.8f;
                 fWriteLine("[ Stage ]");
                 {
@@ -169,6 +173,92 @@ namespace renderer
         static constexpr float HEAD_Y_OFFSET = 0.0f;
         static constexpr float BOW_X_OFFSET = 0.0f;
         static constexpr float BOW_Y_OFFSET = 0.0f;
+        static constexpr float MAP_NATIVE_SIZE = 480.0f;
+
+        void validateAtlasSprite(const std::string& name) const
+        {
+            if (_menuAtlas.getRect(name) == nullptr)
+                throw std::runtime_error("Missing menu atlas sprite: " + name);
+        }
+
+        void validateStageMapAtlas() const
+        {
+            validateAtlasSprite("mapWater");
+            validateAtlasSprite("mapLand");
+            validateAtlasSprite("map/arrow");
+
+            for (const auto& entry : _stageMapCatalog.entries())
+                validateAtlasSprite(entry.iconAtlasName);
+        }
+
+        SDL_FRect stageMapRect(int winw, int winh) const
+        {
+            return {0.0f, 0.0f, static_cast<float>(winw), static_cast<float>(winh)};
+        }
+
+        SDL_FPoint mapToScreen(const SDL_FRect& mapRect, SDL_FPoint mapPosition) const
+        {
+            return {
+                mapRect.x + (mapPosition.x / MAP_NATIVE_SIZE) * mapRect.w,
+                mapRect.y + (mapPosition.y / MAP_NATIVE_SIZE) * mapRect.h
+            };
+        }
+
+        float stageMapVisualScale(const SDL_FRect& mapRect) const
+        {
+            return mapRect.h / MAP_NATIVE_SIZE;
+        }
+
+        void drawStageMap(const SDL_FRect& mapRect)
+        {
+            _menuAtlas.draw(_sdlRenderer, "mapWater", &mapRect);
+            _menuAtlas.draw(_sdlRenderer, "mapLand", &mapRect);
+        }
+
+        void drawStageIcon(const StageMapEntry& entry, const SDL_FRect& mapRect)
+        {
+            SDL_FPoint center = mapToScreen(mapRect, entry.mapPosition);
+            float visualScale = stageMapVisualScale(mapRect);
+            float size = 16.0f * visualScale;
+            SDL_FRect dst = {
+                center.x - size * 0.5f,
+                center.y - size * 0.5f,
+                size,
+                size
+            };
+            _menuAtlas.draw(_sdlRenderer, entry.iconAtlasName, &dst);
+        }
+
+        void drawSelectedStagePointer(const SDL_FRect& mapRect)
+        {
+            const StageMapEntry* entry = _stageMapCatalog.find(_state.stage);
+            if (!entry)
+                return;
+
+            drawStageIcon(*entry, mapRect);
+
+            const SDL_Rect* arrow = _menuAtlas.getRect("map/arrow");
+            if (!arrow)
+                return;
+
+            SDL_FPoint target = mapToScreen(mapRect, entry->mapPosition);
+            float visualScale = stageMapVisualScale(mapRect);
+            SDL_FRect dst = {
+                target.x - arrow->w * visualScale * 0.5f,
+                target.y - (arrow->h + 12.0f) * visualScale,
+                arrow->w * visualScale,
+                arrow->h * visualScale
+            };
+            _menuAtlas.draw(_sdlRenderer, "map/arrow", &dst);
+        }
+
+        void drawStageIcons(const SDL_FRect& mapRect)
+        {
+            for (const auto& entry : _stageMapCatalog.entries())
+                drawStageIcon(entry, mapRect);
+
+            drawSelectedStagePointer(mapRect);
+        }
 
         const ArcherSkin *previewSkin(unsigned int character) const
         {
@@ -292,6 +382,7 @@ namespace renderer
         TextureAtlas _atlas;
         SpriteCatalog _spriteCatalog;
         ArcherCatalog _archerCatalog;
+        StageMapCatalog _stageMapCatalog;
         State _state;
     };
 
