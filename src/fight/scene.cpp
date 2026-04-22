@@ -128,154 +128,162 @@ void fight::Scene::_deactivate()
     _levels.clear();
 }
 
-_Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& givenState, State& followingState, tick_t tick)
+_Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
 {
-    followingState = givenState;
+    // initialize state computation by copying previous state
+    state = _getState(tick - 1);
 
-    std::size_t i = 0;
+    // update players
+    std::size_t playerIndex = 0;
     for (auto& player : _players)
     {
-        const auto& gArcher = givenState.archers.at(i);
-        auto& fArcher = followingState.archers.at(i);
-
-        // inputs
+        // get inputs
+        input::PlayerInput currentInput;
+        input::PlayerInput justPressed;
+        input::PlayerInput justReleased;
         {
-            auto& iBuffer = _inputBufferSet.get(player);
+            auto& iBuffer = _getInputBuffer(player);
             input::PlayerInput previousInput = iBuffer[tick - 1];
-            input::PlayerInput currentInput = iBuffer[tick];
-            input::PlayerInput toggle = ~previousInput & currentInput;
+            currentInput = iBuffer[tick];
+            justPressed = ~previousInput & currentInput;
+            justReleased = previousInput & ~currentInput;
+
+            // next level
+            if (input::get::start(justPressed))
+                state.levelIndex = (state.levelIndex + 1) % _levels.size();
 
             // quit stage
-            if (input::get::cancel(toggle))
+            if (input::get::cancel(justPressed))
                 return UpdateReturnStatus::SWITCH_SELECTION;
+        }
 
-            const auto& level = getLevel(followingState.levelIndex);
-            auto startingContacts = collision::contactsAt(level, gArcher);
+
+        // update archer
+        auto& archer = state.archers.at(playerIndex);
+        {
+            const auto& level = getLevel(state.levelIndex);
+            auto startingContacts = collision::contactsAt(level, archer);
             glm::ivec2 moveDirection = quantizeInput(currentInput);
-            bool jumpPressed = input::get::jump(toggle);
-            bool jumpHeld = input::get::jump(currentInput);
-            bool jumpReleased = input::get::jump(previousInput) && !jumpHeld;
             bool grounded = startingContacts.ground;
             bool holdingWall = !grounded && wantsWallSlide(startingContacts, moveDirection);
-
-            fArcher.movementDirection = moveDirection;
+            
+            archer.movementDirection = moveDirection;
             if (moveDirection != glm::ivec2(0))
-                fArcher.aimDirection = moveDirection;
-            fArcher.velocity = gArcher.velocity;
+                archer.aimDirection = moveDirection;
 
             bool wantsCrouch = grounded && moveDirection.y > 0 && moveDirection.x == 0;
-            if (!wantsCrouch && gArcher.isCrouching)
+            if (!wantsCrouch && archer.isCrouching)
             {
-                Archer standProbe = gArcher;
+                Archer standProbe = archer;
                 standProbe.isCrouching = false;
                 wantsCrouch = collision::overlapsSolid(level, standProbe);
             }
-            fArcher.isCrouching = wantsCrouch;
+            archer.isCrouching = wantsCrouch;
 
             if (moveDirection.x != 0)
-                fArcher.isFacingRight = moveDirection.x > 0;
+                archer.isFacingRight = moveDirection.x > 0;
 
-            if (jumpPressed)
+            if (input::get::jump(justPressed))
             {
                 int awayFromWall = wallJumpDirection(startingContacts);
                 if (grounded)
                 {
-                    fArcher.velocity.y = JUMP_VELOCITY;
-                    fArcher.jumpHoldTicks = JUMP_HOLD_TICKS;
-                    fArcher.movementState = ArcherMovementState::AIRBORNE;
-                    Archer standProbe = fArcher;
+                    archer.velocity.y = JUMP_VELOCITY;
+                    archer.jumpHoldTicks = JUMP_HOLD_TICKS;
+                    archer.movementState = ArcherMovementState::AIRBORNE;
+                    Archer standProbe = archer;
                     standProbe.isCrouching = false;
-                    fArcher.isCrouching = collision::overlapsSolid(level, standProbe);
+                    archer.isCrouching = collision::overlapsSolid(level, standProbe);
                 }
                 else if (awayFromWall != 0)
                 {
-                    fArcher.velocity.y = JUMP_VELOCITY;
-                    fArcher.velocity.x = awayFromWall * WALL_JUMP_X_VELOCITY;
-                    fArcher.jumpHoldTicks = JUMP_HOLD_TICKS;
-                    fArcher.autoMoveTicks = WALL_JUMP_AUTO_MOVE_TICKS;
-                    fArcher.autoMoveDirection = awayFromWall;
-                    fArcher.isFacingRight = awayFromWall > 0;
+                    archer.velocity.y = JUMP_VELOCITY;
+                    archer.velocity.x = awayFromWall * WALL_JUMP_X_VELOCITY;
+                    archer.jumpHoldTicks = JUMP_HOLD_TICKS;
+                    archer.autoMoveTicks = WALL_JUMP_AUTO_MOVE_TICKS;
+                    archer.autoMoveDirection = awayFromWall;
+                    archer.isFacingRight = awayFromWall > 0;
                 }
             }
 
-            if (jumpReleased && fArcher.velocity.y < JUMP_CUT_VELOCITY)
+            if (input::get::jump(justReleased) && archer.velocity.y < JUMP_CUT_VELOCITY)
             {
-                fArcher.velocity.y = JUMP_CUT_VELOCITY;
-                fArcher.jumpHoldTicks = 0;
+                archer.velocity.y = JUMP_CUT_VELOCITY;
+                archer.jumpHoldTicks = 0;
             }
 
-            if (fArcher.autoMoveTicks > 0)
+            if (archer.autoMoveTicks > 0)
             {
-                fArcher.velocity.x = approach(
-                    fArcher.velocity.x,
-                    fArcher.autoMoveDirection * WALL_JUMP_AUTO_SPEED,
+                archer.velocity.x = approach(
+                    archer.velocity.x,
+                    archer.autoMoveDirection * WALL_JUMP_AUTO_SPEED,
                     AIR_ACCELERATION);
-                fArcher.autoMoveTicks--;
+                archer.autoMoveTicks--;
             }
-            else if (fArcher.isCrouching)
+            else if (archer.isCrouching)
             {
-                fArcher.velocity.x = approach(fArcher.velocity.x, 0.0f, GROUND_FRICTION);
+                archer.velocity.x = approach(archer.velocity.x, 0.0f, GROUND_FRICTION);
             }
             else if (moveDirection.x != 0)
             {
                 float acceleration = grounded ? GROUND_ACCELERATION : AIR_ACCELERATION;
-                fArcher.velocity.x = approach(fArcher.velocity.x, moveDirection.x * MAX_RUN_SPEED, acceleration);
+                archer.velocity.x = approach(archer.velocity.x, moveDirection.x * MAX_RUN_SPEED, acceleration);
             }
             else
             {
                 float friction = grounded ? GROUND_FRICTION : AIR_FRICTION;
-                fArcher.velocity.x = approach(fArcher.velocity.x, 0.0f, friction);
+                archer.velocity.x = approach(archer.velocity.x, 0.0f, friction);
             }
 
             float maxFallSpeed = MAX_FALL_SPEED;
             float gravity = GRAVITY_ACCELERATION;
-            if (holdingWall && fArcher.velocity.y > 0.0f && fArcher.autoMoveTicks == 0)
+            if (holdingWall && archer.velocity.y > 0.0f && archer.autoMoveTicks == 0)
             {
                 maxFallSpeed = WALL_SLIDE_MAX_FALL_SPEED;
                 gravity = JUMP_HOLD_GRAVITY_ACCELERATION;
             }
-            else if (!grounded && moveDirection.y > 0 && fArcher.velocity.y > 0.0f)
+            else if (!grounded && moveDirection.y > 0 && archer.velocity.y > 0.0f)
             {
                 maxFallSpeed = FAST_FALL_MAX_SPEED;
                 gravity = FAST_FALL_GRAVITY_ACCELERATION;
             }
-            else if (jumpHeld && fArcher.jumpHoldTicks > 0 && fArcher.velocity.y < 0.0f)
+            else if (input::get::jump(currentInput) && archer.jumpHoldTicks > 0 && archer.velocity.y < 0.0f)
             {
                 gravity = JUMP_HOLD_GRAVITY_ACCELERATION;
             }
 
-            fArcher.velocity.y = std::min(fArcher.velocity.y + gravity, maxFallSpeed);
-            if (!jumpHeld || fArcher.velocity.y >= 0.0f)
-                fArcher.jumpHoldTicks = 0;
-            else if (fArcher.jumpHoldTicks > 0)
-                fArcher.jumpHoldTicks--;
+            archer.velocity.y = std::min(archer.velocity.y + gravity, maxFallSpeed);
+            if (!input::get::jump(currentInput) || archer.velocity.y >= 0.0f)
+                archer.jumpHoldTicks = 0;
+            else if (archer.jumpHoldTicks > 0)
+                archer.jumpHoldTicks--;
 
-            auto endingContacts = collision::moveAndCollide(level, fArcher, POSITION_SCALE);
+            auto endingContacts = collision::moveAndCollide(level, archer, POSITION_SCALE);
             if (endingContacts.ground || endingContacts.ceiling)
-                fArcher.jumpHoldTicks = 0;
+                archer.jumpHoldTicks = 0;
             if (endingContacts.ground)
-                fArcher.autoMoveTicks = 0;
+                archer.autoMoveTicks = 0;
 
-            if (!fArcher.isAlive)
-                fArcher.movementState = ArcherMovementState::DEAD;
+            if (!archer.isAlive)
+                archer.movementState = ArcherMovementState::DEAD;
             else if (endingContacts.ground)
-                fArcher.movementState = ArcherMovementState::GROUNDED;
-            else if (fArcher.autoMoveTicks == 0
-                && fArcher.velocity.y >= 0.0f
+                archer.movementState = ArcherMovementState::GROUNDED;
+            else if (archer.autoMoveTicks == 0
+                && archer.velocity.y >= 0.0f
                 && wantsWallSlide(endingContacts, moveDirection))
             {
-                fArcher.velocity.y = std::min(fArcher.velocity.y, WALL_SLIDE_MAX_FALL_SPEED);
-                fArcher.movementState = ArcherMovementState::WALL_SLIDING;
+                archer.velocity.y = std::min(archer.velocity.y, WALL_SLIDE_MAX_FALL_SPEED);
+                archer.movementState = ArcherMovementState::WALL_SLIDING;
             }
             else
-                fArcher.movementState = ArcherMovementState::AIRBORNE;
+                archer.movementState = ArcherMovementState::AIRBORNE;
         }
 
-        i++;
+        playerIndex++;
     }
 
-    if (givenState.levelIndex != followingState.levelIndex)
-        _initNewLevel(followingState);
+    if (_getState(tick - 1).levelIndex != state.levelIndex)
+        _initNewLevel(state);
 
     return UpdateReturnStatus::STAY;
 }

@@ -21,10 +21,16 @@ namespace input
 
         inline InputBuffer& get(hostID_t hostID, uint8_t deviceID)
             { return _buffers.at(_lookup[hostID] * MAX_LOCAL_DEVICE_COUNT + deviceID); }
-        
+
+        inline const InputBuffer& get(hostID_t hostID, uint8_t deviceID) const
+            { return _buffers.at(_lookup[hostID] * MAX_LOCAL_DEVICE_COUNT + deviceID); }
+
         inline InputBuffer& get(const Player& player)
             { return get(player.hostID, player.deviceID); }
 
+        inline const InputBuffer& get(const Player& player) const
+            { return get(player.hostID, player.deviceID); }
+        
     private:
         uint8_t _lookup[MAX_HOST_COUNT];
         std::vector<InputBuffer> _buffers;

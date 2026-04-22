@@ -37,8 +37,7 @@ namespace fight
     protected:
         void _activate(SceneContext& context, State& startState);
         void _deactivate();
-        UpdateReturnStatus computeFollowingState(
-            const State& givenState, State& followingState, tick_t tick);
+        UpdateReturnStatus computeState(State& state, tick_t tick);
 
     private:
         std::vector<Player> _players;

@@ -49,4 +49,4 @@ namespace fight
             { return position + .5f * glm::vec2(WIDTH, HEIGHT); }
     };
 
-};  // end namespace core
+};  // end namespace fight

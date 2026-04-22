@@ -42,8 +42,7 @@ _Scene::UpdateReturnStatus _SyncedScene<S>::update()
     while (_latestValid < currentTick)
     {
         // compute one new state
-        returnStatus = computeFollowingState(
-            _stateBuffer[(_latestValid + 0) % STATE_BUFFER_SIZE], 
+        returnStatus = computeState(
             _stateBuffer[(_latestValid + 1) % STATE_BUFFER_SIZE], 
             _latestValid + 1);
         

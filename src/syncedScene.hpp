@@ -31,16 +31,22 @@ public:
     UpdateReturnStatus update();
     
 protected:
-    input::InputBufferSet _inputBufferSet {{}};
+    inline const input::InputBuffer& _getInputBuffer(const Player& player) const
+        { return _inputBufferSet.get(player); }
+    inline const input::InputBuffer& _getInputBuffer(hostID_t hostID, uint8_t deviceID) const
+        { return _inputBufferSet.get(hostID, deviceID); }
+    inline const S& _getState(tick_t tick) const
+        { return _stateBuffer[(tick + STATE_BUFFER_SIZE) % STATE_BUFFER_SIZE]; }
+
     std::unique_ptr<renderer::_Renderer<S>> _renderer;
     
     inline virtual void _activate(SceneContext& context, S& startState) {};
     inline virtual void _deactivate() {};
-    virtual UpdateReturnStatus computeFollowingState(
-        const S& givenState, S& followingState, tick_t tick) = 0;
+    virtual UpdateReturnStatus computeState(S& state, tick_t tick) = 0;
     
 private:
     tick_t _startTime = 0;
     tick_t _latestValid = 0;
+    input::InputBufferSet _inputBufferSet {{}};
     S _stateBuffer[STATE_BUFFER_SIZE];
 };

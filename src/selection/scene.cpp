@@ -18,16 +18,14 @@ void selection::Scene::_activate(SceneContext& context, State& startState)
     _knownHosts = context.knownHosts;
 }
 
-_Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
-    const State& givenState, 
-    State& followingState, 
-    tick_t tick
-) {
+_Scene::UpdateReturnStatus selection::Scene::computeState(State& state, tick_t tick)
+{
     UpdateReturnStatus status = UpdateReturnStatus::STAY;
+    auto& givenState = _getState(tick - 1);
     switch (givenState.currentLevel)
     {
     case CHARACTERS: 
-        if(updateCharacterSelection(givenState, followingState, tick))
+        if(updateCharacterSelection(givenState, state, tick))
         {
             _game.getSceneContext()->startTime = tick + 1;
             status = UpdateReturnStatus::SWITCH_MAINMENU;
@@ -35,22 +33,22 @@ _Scene::UpdateReturnStatus selection::Scene::computeFollowingState(
         break;
     
     case MODE:
-        updateModeSelection(givenState, followingState, tick);
+        updateModeSelection(givenState, state, tick);
         break;
     
     case TEAM:
-        updateTeamSelection(givenState, followingState, tick);
+        updateTeamSelection(givenState, state, tick);
         break;
 
     case STAGE:
-        if(updateStageSelection(givenState, followingState, tick))
+        if(updateStageSelection(givenState, state, tick))
         {
             auto context = std::make_shared<fight::Context>();
             context->knownHosts = _knownHosts;
             context->startTime = tick + 1;
-            context->players = followingState.players;
-            context->mode = followingState.mode;
-            context->stage = followingState.stage;
+            context->players = state.players;
+            context->mode = state.mode;
+            context->stage = state.stage;
             _game.getSceneContext() = std::static_pointer_cast<SceneContext>(context);
             status = UpdateReturnStatus::SWITCH_FIGHT;
         }
@@ -67,7 +65,7 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
     for (hostID_t hostID : _knownHosts)
         for (uint8_t deviceID = 0; deviceID < MAX_LOCAL_DEVICE_COUNT; deviceID++)
         {
-            auto& iBuffer = _inputBufferSet.get(hostID, deviceID);
+            auto& iBuffer = _getInputBuffer(hostID, deviceID);
             input::PlayerInput previousInput = iBuffer[tick - 1];
             input::PlayerInput currentInput = iBuffer[tick];
             input::PlayerInput toggle = ~previousInput & currentInput;
@@ -127,7 +125,7 @@ void selection::Scene::updateModeSelection(const State& cstate, State& nstate, t
 
     for (auto& player : nstate.players)
     {
-        auto& iBuffer = _inputBufferSet.get(player);
+        auto& iBuffer = _getInputBuffer(player);
         input::PlayerInput previousInput = iBuffer[tick - 1];
         input::PlayerInput currentInput = iBuffer[tick];
         input::PlayerInput toggle = ~previousInput & currentInput;
@@ -170,7 +168,7 @@ void selection::Scene::updateTeamSelection(const State& cstate, State& nstate, t
 
     for (auto& player : nstate.players)
     {
-        auto& iBuffer = _inputBufferSet.get(player);
+        auto& iBuffer = _getInputBuffer(player);
         input::PlayerInput previousInput = iBuffer[tick - 1];
         input::PlayerInput currentInput = iBuffer[tick];
         input::PlayerInput toggle = ~previousInput & currentInput;
@@ -216,7 +214,7 @@ bool selection::Scene::updateStageSelection(const State& cstate, State& nstate, 
 
     for (auto& player : nstate.players)
     {
-        auto& iBuffer = _inputBufferSet.get(player);
+        auto& iBuffer = _getInputBuffer(player);
         input::PlayerInput previousInput = iBuffer[tick - 1];
         input::PlayerInput currentInput = iBuffer[tick];
         input::PlayerInput toggle = ~previousInput & currentInput;
