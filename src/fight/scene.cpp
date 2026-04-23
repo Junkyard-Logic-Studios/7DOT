@@ -11,24 +11,55 @@
 namespace
 {
     constexpr float INPUT_DEAD_ZONE = 0.35f;
-    constexpr float MAX_RUN_SPEED = 1.65f;
-    constexpr float GROUND_ACCELERATION = 0.22f;
-    constexpr float AIR_ACCELERATION = 0.11f;
-    constexpr float GROUND_FRICTION = 0.30f;
-    constexpr float AIR_FRICTION = 0.035f;
-    constexpr float GRAVITY_ACCELERATION = 0.18f;
-    constexpr float JUMP_HOLD_GRAVITY_ACCELERATION = 0.07f;
-    constexpr float FAST_FALL_GRAVITY_ACCELERATION = 0.30f;
-    constexpr float MAX_FALL_SPEED = 4.4f;
-    constexpr float FAST_FALL_MAX_SPEED = 6.0f;
-    constexpr float WALL_SLIDE_MAX_FALL_SPEED = 1.25f;
-    constexpr float JUMP_VELOCITY = -4.1f;
-    constexpr float JUMP_CUT_VELOCITY = -2.0f;
-    constexpr float WALL_JUMP_X_VELOCITY = 2.35f;
-    constexpr float WALL_JUMP_AUTO_SPEED = 2.05f;
-    constexpr uint8_t JUMP_HOLD_TICKS = 12;
-    constexpr uint8_t WALL_JUMP_AUTO_MOVE_TICKS = 20;
-    constexpr float POSITION_SCALE = 1.0f;
+    constexpr float PHYSICS_DELTA_T = static_cast<float>(DELTA_T);
+    constexpr float TUNING_TICK_SECONDS = 0.01f;
+
+    constexpr float tunedTicksToSeconds(float ticks)
+    {
+        return ticks * TUNING_TICK_SECONDS;
+    }
+
+    constexpr float tunedVelocity(float pixelsPerTuningTick)
+    {
+        return pixelsPerTuningTick / TUNING_TICK_SECONDS;
+    }
+
+    constexpr float tunedAcceleration(float pixelsPerTuningTickPerTuningTick)
+    {
+        return pixelsPerTuningTickPerTuningTick
+            / (TUNING_TICK_SECONDS * TUNING_TICK_SECONDS);
+    }
+
+    constexpr float velocityStep(float acceleration)
+    {
+        return acceleration * PHYSICS_DELTA_T;
+    }
+
+    float tickDownTimer(float time)
+    {
+        constexpr float TIMER_EPSILON = 0.000001f;
+        time = std::max(0.0f, time - PHYSICS_DELTA_T);
+        return time < TIMER_EPSILON ? 0.0f : time;
+    }
+
+    constexpr float MAX_RUN_SPEED = tunedVelocity(1.65f);
+    constexpr float GROUND_ACCELERATION = tunedAcceleration(0.22f);
+    constexpr float AIR_ACCELERATION = tunedAcceleration(0.11f);
+    constexpr float GROUND_FRICTION = tunedAcceleration(0.30f);
+    constexpr float AIR_FRICTION = tunedAcceleration(0.035f);
+    constexpr float GRAVITY_ACCELERATION = tunedAcceleration(0.18f);
+    constexpr float JUMP_HOLD_GRAVITY_ACCELERATION = tunedAcceleration(0.07f);
+    constexpr float FAST_FALL_GRAVITY_ACCELERATION = tunedAcceleration(0.30f);
+    constexpr float MAX_FALL_SPEED = tunedVelocity(4.4f);
+    constexpr float FAST_FALL_MAX_SPEED = tunedVelocity(6.0f);
+    constexpr float WALL_SLIDE_MAX_FALL_SPEED = tunedVelocity(1.25f);
+    constexpr float JUMP_VELOCITY = tunedVelocity(-4.1f);
+    constexpr float JUMP_CUT_VELOCITY = tunedVelocity(-2.0f);
+    constexpr float WALL_JUMP_X_VELOCITY = tunedVelocity(2.35f);
+    constexpr float WALL_JUMP_AUTO_SPEED = tunedVelocity(2.05f);
+    constexpr float JUMP_HOLD_TIME = tunedTicksToSeconds(12.0f);
+    constexpr float WALL_JUMP_AUTO_MOVE_TIME = tunedTicksToSeconds(20.0f);
+    constexpr float POSITION_SCALE = PHYSICS_DELTA_T;
 
     int quantizeAxis(float value)
     {
@@ -189,7 +220,7 @@ _Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
                 if (grounded)
                 {
                     archer.velocity.y = JUMP_VELOCITY;
-                    archer.jumpHoldTicks = JUMP_HOLD_TICKS;
+                    archer.jumpHoldTime = JUMP_HOLD_TIME;
                     archer.movementState = ArcherMovementState::AIRBORNE;
                     Archer standProbe = archer;
                     standProbe.isCrouching = false;
@@ -199,8 +230,8 @@ _Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
                 {
                     archer.velocity.y = JUMP_VELOCITY;
                     archer.velocity.x = awayFromWall * WALL_JUMP_X_VELOCITY;
-                    archer.jumpHoldTicks = JUMP_HOLD_TICKS;
-                    archer.autoMoveTicks = WALL_JUMP_AUTO_MOVE_TICKS;
+                    archer.jumpHoldTime = JUMP_HOLD_TIME;
+                    archer.autoMoveTime = WALL_JUMP_AUTO_MOVE_TIME;
                     archer.autoMoveDirection = awayFromWall;
                     archer.isFacingRight = awayFromWall > 0;
                 }
@@ -209,35 +240,38 @@ _Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
             if (input::get::jump(justReleased) && archer.velocity.y < JUMP_CUT_VELOCITY)
             {
                 archer.velocity.y = JUMP_CUT_VELOCITY;
-                archer.jumpHoldTicks = 0;
+                archer.jumpHoldTime = 0.0f;
             }
 
-            if (archer.autoMoveTicks > 0)
+            if (archer.autoMoveTime > 0.0f)
             {
                 archer.velocity.x = approach(
                     archer.velocity.x,
                     archer.autoMoveDirection * WALL_JUMP_AUTO_SPEED,
-                    AIR_ACCELERATION);
-                archer.autoMoveTicks--;
+                    velocityStep(AIR_ACCELERATION));
+                archer.autoMoveTime = tickDownTimer(archer.autoMoveTime);
             }
             else if (archer.isCrouching)
             {
-                archer.velocity.x = approach(archer.velocity.x, 0.0f, GROUND_FRICTION);
+                archer.velocity.x = approach(archer.velocity.x, 0.0f, velocityStep(GROUND_FRICTION));
             }
             else if (moveDirection.x != 0)
             {
                 float acceleration = grounded ? GROUND_ACCELERATION : AIR_ACCELERATION;
-                archer.velocity.x = approach(archer.velocity.x, moveDirection.x * MAX_RUN_SPEED, acceleration);
+                archer.velocity.x = approach(
+                    archer.velocity.x,
+                    moveDirection.x * MAX_RUN_SPEED,
+                    velocityStep(acceleration));
             }
             else
             {
                 float friction = grounded ? GROUND_FRICTION : AIR_FRICTION;
-                archer.velocity.x = approach(archer.velocity.x, 0.0f, friction);
+                archer.velocity.x = approach(archer.velocity.x, 0.0f, velocityStep(friction));
             }
 
             float maxFallSpeed = MAX_FALL_SPEED;
             float gravity = GRAVITY_ACCELERATION;
-            if (holdingWall && archer.velocity.y > 0.0f && archer.autoMoveTicks == 0)
+            if (holdingWall && archer.velocity.y > 0.0f && archer.autoMoveTime <= 0.0f)
             {
                 maxFallSpeed = WALL_SLIDE_MAX_FALL_SPEED;
                 gravity = JUMP_HOLD_GRAVITY_ACCELERATION;
@@ -247,28 +281,28 @@ _Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
                 maxFallSpeed = FAST_FALL_MAX_SPEED;
                 gravity = FAST_FALL_GRAVITY_ACCELERATION;
             }
-            else if (input::get::jump(currentInput) && archer.jumpHoldTicks > 0 && archer.velocity.y < 0.0f)
+            else if (input::get::jump(currentInput) && archer.jumpHoldTime > 0.0f && archer.velocity.y < 0.0f)
             {
                 gravity = JUMP_HOLD_GRAVITY_ACCELERATION;
             }
 
-            archer.velocity.y = std::min(archer.velocity.y + gravity, maxFallSpeed);
+            archer.velocity.y = std::min(archer.velocity.y + velocityStep(gravity), maxFallSpeed);
             if (!input::get::jump(currentInput) || archer.velocity.y >= 0.0f)
-                archer.jumpHoldTicks = 0;
-            else if (archer.jumpHoldTicks > 0)
-                archer.jumpHoldTicks--;
+                archer.jumpHoldTime = 0.0f;
+            else if (archer.jumpHoldTime > 0.0f)
+                archer.jumpHoldTime = tickDownTimer(archer.jumpHoldTime);
 
             auto endingContacts = collision::moveAndCollide(level, archer, POSITION_SCALE);
             if (endingContacts.ground || endingContacts.ceiling)
-                archer.jumpHoldTicks = 0;
+                archer.jumpHoldTime = 0.0f;
             if (endingContacts.ground)
-                archer.autoMoveTicks = 0;
+                archer.autoMoveTime = 0.0f;
 
             if (!archer.isAlive)
                 archer.movementState = ArcherMovementState::DEAD;
             else if (endingContacts.ground)
                 archer.movementState = ArcherMovementState::GROUNDED;
-            else if (archer.autoMoveTicks == 0
+            else if (archer.autoMoveTime <= 0.0f
                 && archer.velocity.y >= 0.0f
                 && wantsWallSlide(endingContacts, moveDirection))
             {
@@ -301,8 +335,8 @@ void fight::Scene::_initNewLevel(State& state)
         archer.movementDirection = glm::ivec2(0);
         archer.aimDirection = glm::ivec2(archer.isFacingRight ? 1 : -1, 0);
         archer.movementState = ArcherMovementState::AIRBORNE;
-        archer.jumpHoldTicks = 0;
-        archer.autoMoveTicks = 0;
+        archer.jumpHoldTime = 0.0f;
+        archer.autoMoveTime = 0.0f;
         archer.autoMoveDirection = 0;
         i++;
     }

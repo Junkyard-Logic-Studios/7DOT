@@ -23,8 +23,8 @@ namespace fight
         glm::ivec2 movementDirection = glm::ivec2(0);
         glm::ivec2 aimDirection = glm::ivec2(1, 0);
         ArcherMovementState movementState = ArcherMovementState::AIRBORNE;
-        uint8_t jumpHoldTicks = 0;
-        uint8_t autoMoveTicks = 0;
+        float jumpHoldTime = 0.0f;
+        float autoMoveTime = 0.0f;
         int8_t autoMoveDirection = 0;
 
         uint32_t isFacingRight : 1;
