@@ -5,15 +5,17 @@
 using namespace std::chrono_literals;
 
 
-constexpr auto MS_PER_TICK = 10;            // -> 100 ticks per second
+namespace std::chrono 
+{
+    // 10 ms per tick -> 100 ticks per second
+    using ticks = duration<int64_t, std::ratio_multiply<
+        std::ratio<10>, milli>::type>;
+};
+constexpr double DELTA_T = double(std::chrono::ticks::period::num) / std::chrono::ticks::period::den;
 constexpr auto MAX_ROLLBACK = 1s;           // -> maximum rollback of 1 second
 constexpr auto MAX_INPUT_LOOKBACK = 1s;     // -> state computation looks at no inputs older than 1 second
 constexpr auto VIRTUAL_INPUT_LAG = 10ms;    // -> artificially delay all inputs
 
-namespace std::chrono 
-{
-    using ticks = duration<int64_t, std::ratio<MS_PER_TICK, 1000>::type>;
-};
 
 using tick_t = int32_t;
 

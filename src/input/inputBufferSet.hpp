@@ -11,12 +11,20 @@ namespace input
     class InputBufferSet
     {
     public:
-        inline InputBufferSet(const std::vector<hostID_t>& hosts)
+        inline InputBufferSet(const std::vector<hostID_t>& hosts, tick_t tick)
         {
             _buffers.resize(hosts.size() * MAX_LOCAL_DEVICE_COUNT);
+            
             uint8_t bufferIndex = 0;
             for (hostID_t hostID : hosts)
+            {
                 _lookup[hostID] = bufferIndex++;
+                
+                PlayerInput resetInput;
+                set::timestamp(resetInput, tick);
+                for (std::size_t i = 0; i < MAX_LOCAL_DEVICE_COUNT; i++)
+                    get(hostID, i).reset(resetInput);
+            }
         }
 
         inline InputBuffer& get(hostID_t hostID, uint8_t deviceID)

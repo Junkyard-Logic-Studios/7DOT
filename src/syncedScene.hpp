@@ -47,6 +47,6 @@ protected:
 private:
     tick_t _startTime = 0;
     tick_t _latestValid = 0;
-    input::InputBufferSet _inputBufferSet {{}};
+    input::InputBufferSet _inputBufferSet {{}, 0};
     S _stateBuffer[STATE_BUFFER_SIZE];
 };

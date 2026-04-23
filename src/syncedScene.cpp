@@ -12,7 +12,7 @@ namespace selection
 template<typename S>
 void _SyncedScene<S>::activate(SceneContext& context)
 {
-    _inputBufferSet = input::InputBufferSet(context.knownHosts);
+    _inputBufferSet = input::InputBufferSet(context.knownHosts, context.startTime);
     _startTime = context.startTime;
 
     if (dynamic_cast<selection::Scene*>(this))

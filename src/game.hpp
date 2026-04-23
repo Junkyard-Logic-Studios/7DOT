@@ -61,7 +61,7 @@ public:
         SDL_ShowWindow(_window.get());
 
         // log some info
-        SDL_LogInfo(0, "ms per tick:              %i",  MS_PER_TICK);
+        SDL_LogInfo(0, "ms per tick:              %li",  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::ticks(1)).count());
         SDL_LogInfo(0, "max rollback ticks:       %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_ROLLBACK).count());
         SDL_LogInfo(0, "max input lookback ticks: %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_INPUT_LOOKBACK).count());
         SDL_LogInfo(0, "input buffer size:        %li", input::INPUT_BUFFER_SIZE);
