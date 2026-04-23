@@ -2,7 +2,6 @@
 #include "../renderer/selectionRenderer.hpp"
 #include "../renderer/ArcherCatalog.hpp"
 #include "../game.hpp"
-#include "../fight/context.hpp"
 
 
 
@@ -27,7 +26,7 @@ _Scene::UpdateReturnStatus selection::Scene::computeState(State& state, tick_t t
     case CHARACTERS: 
         if(updateCharacterSelection(givenState, state, tick))
         {
-            _game.getSceneContext()->startTime = tick + 1;
+            _game.getSceneContext().startTime = tick + 1;
             status = UpdateReturnStatus::SWITCH_MAINMENU;
         }
         break;
@@ -43,13 +42,12 @@ _Scene::UpdateReturnStatus selection::Scene::computeState(State& state, tick_t t
     case STAGE:
         if(updateStageSelection(givenState, state, tick))
         {
-            auto context = std::make_shared<fight::Context>();
-            context->knownHosts = _knownHosts;
-            context->startTime = tick + 1;
-            context->players = state.players;
-            context->mode = state.mode;
-            context->stage = state.stage;
-            _game.getSceneContext() = std::static_pointer_cast<SceneContext>(context);
+            auto& context = _game.getSceneContext();
+            context.knownHosts = _knownHosts;
+            context.startTime = tick + 1;
+            context.players = state.players;
+            context.mode = state.mode;
+            context.stage = state.stage;
             status = UpdateReturnStatus::SWITCH_FIGHT;
         }
         break;

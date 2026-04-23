@@ -1,7 +1,6 @@
 #include <filesystem>
 #include <algorithm>
 #include "scene.hpp"
-#include "context.hpp"
 #include "movement.hpp"
 #include "../renderer/fightRenderer.hpp"
 #include "../game.hpp"
@@ -34,10 +33,9 @@ const fight::Level& fight::Scene::getLevel(std::size_t index) const
 
 void fight::Scene::_activate(SceneContext& context, State& startState)
 {
-    auto& ctx = static_cast<Context&>(context);
-    _players = ctx.players;
-    _mode = ctx.mode;
-    _stage = ctx.stage;
+    _players = context.players;
+    _mode = context.mode;
+    _stage = context.stage;
 
     // load levels for stage
     {
@@ -95,7 +93,10 @@ _Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
 
             // quit stage
             if (input::get::cancel(justPressed))
+            {
+                _game.getSceneContext().startTime = tick + 1;
                 return UpdateReturnStatus::SWITCH_SELECTION;
+            }
         }
 
 

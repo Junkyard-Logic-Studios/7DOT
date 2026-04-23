@@ -20,7 +20,7 @@ namespace input
             {
                 _lookup[hostID] = bufferIndex++;
                 
-                PlayerInput resetInput;
+                PlayerInput resetInput = 0;
                 set::timestamp(resetInput, tick);
                 for (std::size_t i = 0; i < MAX_LOCAL_DEVICE_COUNT; i++)
                     get(hostID, i).reset(resetInput);
