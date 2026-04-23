@@ -4,6 +4,8 @@
 #include <vector>
 #include <filesystem>
 #include <algorithm>
+#include <cctype>
+#include <string>
 #include "../constants.hpp"
 #include "stage.hpp"
 #include "pugixml.hpp"
@@ -142,6 +144,23 @@ inline Tileset& getTileset(fight::Stage stage, bool background = false)
 }
 
 
+fight::WrapMode parseWrapMode(const char* value)
+{
+    std::string mode = value ? value : "";
+    std::transform(mode.begin(), mode.end(), mode.begin(),
+        [](unsigned char c) { return char(std::tolower(c)); });
+
+    if (mode == "both")
+        return fight::WrapMode::BOTH;
+    if (mode == "horizontal" || mode == "x")
+        return fight::WrapMode::HORIZONTAL;
+    if (mode == "vertical" || mode == "y")
+        return fight::WrapMode::VERTICAL;
+
+    return fight::WrapMode::NONE;
+}
+
+
 fight::Level::Level(Stage stage, const char* oelPath)
 {
     // load level XML
@@ -155,6 +174,7 @@ fight::Level::Level(Stage stage, const char* oelPath)
     // get width and height
     _width = level.attribute("width").as_ullong() / TILESIZE;
     _height = level.attribute("height").as_ullong() / TILESIZE;
+    _wrapMode = parseWrapMode(level.attribute("WrapMode").as_string());
     
     // initialize arrays
     _solidBits = new uint64_t[(_width + 63) / 64 * _height];
@@ -310,6 +330,15 @@ int8_t fight::Level::getSolidAt(std::size_t x, std::size_t y) const
 }
 
 
+bool fight::Level::isSolidAt(int x, int y) const
+{
+    if (x < 0 || y < 0 || x >= int(_width) || y >= int(_height))
+        return false;
+
+    return getSolidAt(std::size_t(x), std::size_t(y)) != -1;
+}
+
+
 const uint64_t* fight::Level::getBitmapBackground() const
     { return _backgroundBits; }
 
@@ -323,6 +352,18 @@ int8_t fight::Level::getBackgroundAt(std::size_t x, std::size_t y) const
     return _backgroundBits[(_width + 63) / 64 * y + x / 64] & (1ul << (x % 64)) ?
         _backgroundTiles[_width * y + x] : -1;
 }
+
+
+fight::WrapMode fight::Level::getWrapMode() const
+    { return _wrapMode; }
+
+
+bool fight::Level::wrapsHorizontally() const
+    { return _wrapMode == WrapMode::HORIZONTAL || _wrapMode == WrapMode::BOTH; }
+
+
+bool fight::Level::wrapsVertically() const
+    { return _wrapMode == WrapMode::VERTICAL || _wrapMode == WrapMode::BOTH; }
 
 glm::vec2 fight::Level::getPlayerSpawnLocation(std::size_t index) const
     { return _playerSpawns.at(index % _playerSpawns.size()); }

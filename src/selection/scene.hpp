@@ -34,9 +34,8 @@ namespace selection
 
     protected:
         void _activate(SceneContext& context, State& startState);
-        UpdateReturnStatus computeFollowingState(
-            const State& givenState, State& followingState, tick_t tick);
-
+        UpdateReturnStatus computeState(State& state, tick_t tick);
+        
     private:
         std::vector<hostID_t> _knownHosts;
 

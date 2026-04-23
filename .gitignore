@@ -2,6 +2,8 @@ build/
 .vscode/
 resources/assets
 
+.DS_Store
+
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles

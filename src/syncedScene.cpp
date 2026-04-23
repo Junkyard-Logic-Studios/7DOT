@@ -12,7 +12,7 @@ namespace selection
 template<typename S>
 void _SyncedScene<S>::activate(SceneContext& context)
 {
-    _inputBufferSet = input::InputBufferSet(context.knownHosts);
+    _inputBufferSet = input::InputBufferSet(context.knownHosts, context.startTime);
     _startTime = context.startTime;
 
     if (dynamic_cast<selection::Scene*>(this))
@@ -42,8 +42,7 @@ _Scene::UpdateReturnStatus _SyncedScene<S>::update()
     while (_latestValid < currentTick)
     {
         // compute one new state
-        returnStatus = computeFollowingState(
-            _stateBuffer[(_latestValid + 0) % STATE_BUFFER_SIZE], 
+        returnStatus = computeState(
             _stateBuffer[(_latestValid + 1) % STATE_BUFFER_SIZE], 
             _latestValid + 1);
         

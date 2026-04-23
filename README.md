@@ -1,9 +1,10 @@
 # 7DOT
 Would be a real shame if this side-project were abandoned.
 
-- [Clone](#clone)
-- [Build](#build)
-- [Run](#run)
+- [7DOT](#7dot)
+  - [Clone](#clone)
+  - [Build](#build)
+  - [Run](#run)
 
 
 ## Clone
@@ -22,34 +23,33 @@ git submodule update
 
 
 ## Build
-Within the toplevel directory of the repository, create a build directory:
+Within the toplevel directory of the repository, run:
 ```
-mkdir build && cd build
-```
-
-Then configure the cmake project:
-- ...for development:
-```
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
-```
-- ...or for usage:
-```
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+./build.sh
 ```
 
-Finally build with:
+The build script configures CMake, creates or reuses the `build/` directory, builds the project, and then offers to run the game, run tests, or skip running anything.
+
+Common variants:
 ```
-cmake --build . -j 8
+./build.sh --run normal
+./build.sh --run test
+./build.sh --release --run normal
+./build.sh --clean
 ```
+
+By default the script creates local `.vscode/launch.json` and `.vscode/tasks.json` files when they are missing.
 
 
 ## Run
 From the toplevel directory of the repository, run with:
 ```
-build/bin/7dot
+./build.sh --run normal
 ```
 
 If you have built tests in the previous step, these can be executed with:
 ```
-build/bin/7dot_test
+./build.sh --run test
 ```
+
+The built game executable is still available at `build/bin/7dot`.

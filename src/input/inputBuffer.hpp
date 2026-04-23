@@ -74,6 +74,12 @@ namespace input
         inline tick_t latest() const
             { return _latest; }
 
+        inline void reset(PlayerInput input)
+        {
+            std::fill(_buffer, _buffer + INPUT_BUFFER_SIZE, input);
+            _latest = get::timestamp(input);
+        }
+
     private:
         tick_t _latest = 0;
         PlayerInput _buffer[INPUT_BUFFER_SIZE] = { 0 };

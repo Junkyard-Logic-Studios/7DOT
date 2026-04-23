@@ -53,15 +53,14 @@ public:
         _fightScene     = std::make_unique<fight::Scene>(*this);
         
         // pick main menu scene as first active scene
-        _sceneContext = std::make_shared<SceneContext>();
         _activeScene = static_cast<_Scene*>(_mainMenuScene.get());
-        _activeScene->activate(*_sceneContext);
+        _activeScene->activate(_sceneContext);
 
         // show window once initialization is complete
         SDL_ShowWindow(_window.get());
 
         // log some info
-        SDL_LogInfo(0, "ms per tick:              %i",  MS_PER_TICK);
+        SDL_LogInfo(0, "ms per tick:              %li",  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::ticks(1)).count());
         SDL_LogInfo(0, "max rollback ticks:       %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_ROLLBACK).count());
         SDL_LogInfo(0, "max input lookback ticks: %li", std::chrono::duration_cast<std::chrono::ticks>(MAX_INPUT_LOOKBACK).count());
         SDL_LogInfo(0, "input buffer size:        %li", input::INPUT_BUFFER_SIZE);
@@ -100,7 +99,7 @@ public:
         const auto switchScene = [&](_Scene* next) {
             _activeScene->deactivate();
             _activeScene = next;
-            _activeScene->activate(*_sceneContext);
+            _activeScene->activate(_sceneContext);
         };
         switch (_activeScene->update())
         {
@@ -129,7 +128,7 @@ public:
     input::Pipeline& getInputPipeline()
         { return _inputPipeline; }
 
-    std::shared_ptr<SceneContext>& getSceneContext()
+    SceneContext& getSceneContext()
         { return _sceneContext; }
 
 private:
@@ -138,7 +137,7 @@ private:
     std::unique_ptr<SDL_Renderer, decltype(&SDL_DestroyRenderer)> _renderer{nullptr, SDL_DestroyRenderer};
 
     // game scenes
-    std::shared_ptr<SceneContext>     _sceneContext;
+    SceneContext _sceneContext;
     std::unique_ptr<mainmenu::Scene>  _mainMenuScene;
     std::unique_ptr<selection::Scene> _selectionScene;
     std::unique_ptr<fight::Scene>     _fightScene;

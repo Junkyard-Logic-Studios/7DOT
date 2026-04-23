@@ -1,10 +1,15 @@
 #include <filesystem>
 #include <algorithm>
-#include "glm/geometric.hpp"
 #include "scene.hpp"
-#include "context.hpp"
+#include "movement.hpp"
 #include "../renderer/fightRenderer.hpp"
 #include "../game.hpp"
+
+
+namespace
+{
+    constexpr float PHYSICS_DELTA_T = static_cast<float>(DELTA_T);
+}
 
 
 fight::Scene::Scene(Game& game) :
@@ -20,15 +25,17 @@ fight::Mode fight::Scene::getMode() const
 fight::Stage fight::Scene::getStage() const
     { return _stage; }
 
+const std::vector<Player>& fight::Scene::getPlayers() const
+    { return _players; }
+
 const fight::Level& fight::Scene::getLevel(std::size_t index) const
     { return _levels[index]; }
 
 void fight::Scene::_activate(SceneContext& context, State& startState)
 {
-    auto& ctx = static_cast<Context&>(context);
-    _players = ctx.players;
-    _mode = ctx.mode;
-    _stage = ctx.stage;
+    _players = context.players;
+    _mode = context.mode;
+    _stage = context.stage;
 
     // load levels for stage
     {
@@ -60,81 +67,57 @@ void fight::Scene::_deactivate()
     _levels.clear();
 }
 
-_Scene::UpdateReturnStatus fight::Scene::computeFollowingState(const State& givenState, State& followingState, tick_t tick)
+_Scene::UpdateReturnStatus fight::Scene::computeState(State& state, tick_t tick)
 {
-    followingState = givenState;
+    // initialize state computation by copying previous state
+    state = _getState(tick - 1);
 
-    std::size_t i = 0;
+    // update players
+    std::size_t playerIndex = 0;
     for (auto& player : _players)
     {
-        const auto& gArcher = givenState.archers.at(i);
-        auto& fArcher = followingState.archers.at(i);
-
-        // inputs
+        // get inputs
+        input::PlayerInput currentInput;
+        input::PlayerInput justPressed;
+        input::PlayerInput justReleased;
         {
-            auto& iBuffer = _inputBufferSet.get(player);
+            auto& iBuffer = _getInputBuffer(player);
             input::PlayerInput previousInput = iBuffer[tick - 1];
-            input::PlayerInput currentInput = iBuffer[tick];
-            input::PlayerInput toggle = ~previousInput & currentInput;
-
-            // movement
-            fArcher.velocity = gArcher.velocity + glm::vec2(
-                input::get::horizontalAxis(currentInput), 
-                MS_PER_TICK * .1f - 30.f * input::get::jump(toggle));                
+            currentInput = iBuffer[tick];
+            justPressed = ~previousInput & currentInput;
+            justReleased = previousInput & ~currentInput;
 
             // next level
-            if (input::get::shoot(toggle))
-                followingState.levelIndex = (givenState.levelIndex + 1) % _levels.size();
+            if (input::get::start(justPressed))
+                state.levelIndex = (state.levelIndex + 1) % _levels.size();
 
             // quit stage
-            if (input::get::cancel(toggle))
+            if (input::get::cancel(justPressed))
+            {
+                _game.getSceneContext().startTime = tick + 1;
                 return UpdateReturnStatus::SWITCH_SELECTION;
+            }
         }
 
-        // collisions (super temporary)
+
+        // update archer
+        auto& archer = state.archers.at(playerIndex);
         {
-            const auto& level = getLevel(followingState.levelIndex);
-
-            for (std::size_t x = 0; x < level.getWidth(); x++)
-                for (std::size_t y = 0; y < level.getHeight(); y++)
-                {
-                    bool solid = level.getSolidAt(x, y) != -1;
-                    if (!solid)
-                        continue;   // not a solid tile
-                    
-                    bool sepU = fArcher.hitboxBR().y < (y - .5f) * TILESIZE;
-                    bool sepD = fArcher.hitboxTL().y > (y + .5f) * TILESIZE;
-                    bool sepL = fArcher.hitboxBR().x < (x - .5f) * TILESIZE;
-                    bool sepR = fArcher.hitboxTL().x > (x + .5f) * TILESIZE;
-
-                    if (sepU || sepD || sepL || sepR)
-                        continue;   // separated in at least one direction
-
-                    auto v = (fArcher.position - glm::vec2(x, y) * float(TILESIZE));
-                    v *= glm::abs(v.x) > glm::abs(v.y) ? glm::vec2(1,0) : glm::vec2(0,1);
-                    fArcher.velocity += v / glm::length(v) * .5f;
-
-                    continue;
-                }
-        }
-        
-        // apply
-        {
-            // velocity
-            fArcher.position = gArcher.position + fArcher.velocity * float(MS_PER_TICK) * .1f;
-
-            // drag
-            fArcher.velocity.x = std::max(0.0f, std::abs(fArcher.velocity.x) - float(MS_PER_TICK))
-                * (fArcher.velocity.x < 0.0 ? -1.0 : 1.0);
-            fArcher.velocity.y = std::max(0.0f, std::abs(fArcher.velocity.y) - float(MS_PER_TICK))
-                * (fArcher.velocity.y < 0.0 ? -1.0 : 1.0);
+            const auto& level = getLevel(state.levelIndex);
+            movement::stepArcher(
+                level,
+                archer,
+                currentInput,
+                justPressed,
+                justReleased,
+                PHYSICS_DELTA_T);
         }
 
-        i++;
+        playerIndex++;
     }
 
-    if (givenState.levelIndex != followingState.levelIndex)
-        _initNewLevel(followingState);
+    if (_getState(tick - 1).levelIndex != state.levelIndex)
+        _initNewLevel(state);
 
     return UpdateReturnStatus::STAY;
 }
@@ -149,6 +132,12 @@ void fight::Scene::_initNewLevel(State& state)
         archer.position = _levels[state.levelIndex].getPlayerSpawnLocation(i);
         archer.velocity = glm::vec2(0);
         archer.isFacingRight = (archer.position.x < _levels[state.levelIndex].getWidth() * TILESIZE / 2);
+        archer.movementDirection = glm::ivec2(0);
+        archer.aimDirection = glm::ivec2(archer.isFacingRight ? 1 : -1, 0);
+        archer.movementState = ArcherMovementState::AIRBORNE;
+        archer.jumpHoldTime = 0.0f;
+        archer.autoMoveTime = 0.0f;
+        archer.autoMoveDirection = 0;
         i++;
     }
 }

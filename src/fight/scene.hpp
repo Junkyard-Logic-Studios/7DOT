@@ -31,13 +31,13 @@ namespace fight
         Scene(Game& game);
         Mode getMode() const;
         Stage getStage() const;
+        const std::vector<Player>& getPlayers() const;
         const Level& getLevel(std::size_t index) const;
 
     protected:
         void _activate(SceneContext& context, State& startState);
         void _deactivate();
-        UpdateReturnStatus computeFollowingState(
-            const State& givenState, State& followingState, tick_t tick);
+        UpdateReturnStatus computeState(State& state, tick_t tick);
 
     private:
         std::vector<Player> _players;
