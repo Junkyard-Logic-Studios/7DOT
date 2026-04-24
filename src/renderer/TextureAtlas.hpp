@@ -19,8 +19,11 @@ public:
 	inline const SDL_Rect* getRect(const std::string &name) const;
 	inline void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
 	inline void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
+	inline void drawCover(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
+	inline void drawTiled(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect, float scale = 1.0f);
 	inline void drawFrame(SDL_Renderer *renderer, const std::string &name, int frameWidth, int frameHeight,
 		int frameIndex, const SDL_FRect *dstrect, bool fliphoriz = false);
+	inline void drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, const SDL_FRect& dstrect);
 	inline void drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, int x, int y);
 
 private:
@@ -132,6 +135,56 @@ inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, 
 	SDL_RenderTexture(renderer, texture, &src, dstrect ? dstrect : &default_dst);
 }
 
+inline void TextureAtlas::drawCover(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect)
+{
+	if (!dstrect || dstrect->w <= 0.0f || dstrect->h <= 0.0f)
+		return;
+
+	auto it = atlas.find(name);
+	if (it == atlas.end())
+	{
+		std::cerr << "Sprite not found in atlas: " << name << "\n";
+		return;
+	}
+
+	const SDL_Rect &r = it->second;
+	float dstAspect = dstrect->w / dstrect->h;
+	float srcAspect = static_cast<float>(r.w) / static_cast<float>(r.h);
+	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
+
+	if (srcAspect > dstAspect)
+	{
+		float cropWidth = static_cast<float>(r.h) * dstAspect;
+		src.x += (static_cast<float>(r.w) - cropWidth) * 0.5f;
+		src.w = cropWidth;
+	}
+	else if (srcAspect < dstAspect)
+	{
+		float cropHeight = static_cast<float>(r.w) / dstAspect;
+		src.y += (static_cast<float>(r.h) - cropHeight) * 0.5f;
+		src.h = cropHeight;
+	}
+
+	SDL_RenderTexture(renderer, texture, &src, dstrect);
+}
+
+inline void TextureAtlas::drawTiled(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect, float scale)
+{
+	if (!dstrect || dstrect->w <= 0.0f || dstrect->h <= 0.0f || scale <= 0.0f)
+		return;
+
+	auto it = atlas.find(name);
+	if (it == atlas.end())
+	{
+		std::cerr << "Sprite not found in atlas: " << name << "\n";
+		return;
+	}
+
+	const SDL_Rect &r = it->second;
+	SDL_FRect src = {(float)r.x, (float)r.y, (float)r.w, (float)r.h};
+	SDL_RenderTextureTiled(renderer, texture, &src, scale, dstrect);
+}
+
 inline void TextureAtlas::drawFrame(SDL_Renderer *renderer, const std::string &name, int frameWidth, int frameHeight,
 	int frameIndex, const SDL_FRect *dstrect, bool fliphoriz)
 {
@@ -166,7 +219,7 @@ inline void TextureAtlas::drawFrame(SDL_Renderer *renderer, const std::string &n
 		fliphoriz ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 }
 
-inline void TextureAtlas::drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, int x, int y)
+inline void TextureAtlas::drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, const SDL_FRect& dstrect)
 {
 	if (index < 0)
 		return;
@@ -182,6 +235,16 @@ inline void TextureAtlas::drawTile(SDL_Renderer* renderer, const std::string& na
 	int iw = index % (r.w / TILESIZE);
 	int ih = index / (r.w / TILESIZE);
 	SDL_FRect src = { (float)r.x + iw * TILESIZE, (float)r.y + ih * TILESIZE, (float)TILESIZE, (float)TILESIZE };	
-	SDL_FRect dst = { (float)x * 3 * TILESIZE, (float)y * 3 * TILESIZE, (float)TILESIZE * 3, (float)TILESIZE * 3};	
-	SDL_RenderTexture(renderer, texture, &src, &dst);
+	SDL_RenderTexture(renderer, texture, &src, &dstrect);
+}
+
+inline void TextureAtlas::drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, int x, int y)
+{
+	SDL_FRect dst = {
+		static_cast<float>(x * TILESIZE),
+		static_cast<float>(y * TILESIZE),
+		static_cast<float>(TILESIZE),
+		static_cast<float>(TILESIZE)
+	};
+	drawTile(renderer, name, index, dst);
 }

@@ -56,32 +56,60 @@ namespace
         return level.getSolidAt(tileX, tileY) != -1;
     }
 
-    TileRange overlappedTiles(const fight::Archer& archer)
+    fight::Archer::Hitbox hitboxFor(
+        const fight::Archer& archer,
+        fight::collision::ArcherHitboxPart part)
     {
-        glm::vec2 tl = archer.hitboxTL();
-        glm::vec2 br = archer.hitboxBR();
+        switch (part)
+        {
+            case fight::collision::ArcherHitboxPart::HEAD:
+                return archer.headHitbox();
+            case fight::collision::ArcherHitboxPart::BODY:
+                return archer.bodyHitbox();
+            case fight::collision::ArcherHitboxPart::FULL:
+                break;
+        }
 
+        return archer.fullHitbox();
+    }
+
+    TileRange overlappedTiles(const fight::Archer::Hitbox& hitbox)
+    {
         return {
-            floorToTile(tl.x),
-            floorToTile(br.x - OVERLAP_EPSILON),
-            floorToTile(tl.y),
-            floorToTile(br.y - OVERLAP_EPSILON)
+            floorToTile(hitbox.tl.x),
+            floorToTile(hitbox.br.x - OVERLAP_EPSILON),
+            floorToTile(hitbox.tl.y),
+            floorToTile(hitbox.br.y - OVERLAP_EPSILON)
         };
     }
 
-    bool tileOverlapsArcher(const fight::Archer& archer, int x, int y)
+    TileRange overlappedTiles(
+        const fight::Archer& archer,
+        fight::collision::ArcherHitboxPart part = fight::collision::ArcherHitboxPart::FULL)
     {
-        glm::vec2 tl = archer.hitboxTL();
-        glm::vec2 br = archer.hitboxBR();
+        return overlappedTiles(hitboxFor(archer, part));
+    }
+
+    bool tileOverlapsHitbox(const fight::Archer::Hitbox& hitbox, int x, int y)
+    {
         float tileLeft = float(x * TILESIZE);
         float tileRight = float((x + 1) * TILESIZE);
         float tileTop = float(y * TILESIZE);
         float tileBottom = float((y + 1) * TILESIZE);
 
-        return tileLeft < br.x
-            && tileRight > tl.x
-            && tileTop < br.y
-            && tileBottom > tl.y;
+        return tileLeft < hitbox.br.x
+            && tileRight > hitbox.tl.x
+            && tileTop < hitbox.br.y
+            && tileBottom > hitbox.tl.y;
+    }
+
+    bool tileOverlapsArcher(
+        const fight::Archer& archer,
+        int x,
+        int y,
+        fight::collision::ArcherHitboxPart part = fight::collision::ArcherHitboxPart::FULL)
+    {
+        return tileOverlapsHitbox(hitboxFor(archer, part), x, y);
     }
 
     void resolveX(const fight::Level& level, fight::Archer& archer, float dx,
@@ -154,38 +182,44 @@ namespace
 }
 
 
-bool fight::collision::overlapsSolid(const Level& level, const Archer& archer)
+bool fight::collision::overlapsSolid(
+    const Level& level,
+    const Archer& archer,
+    ArcherHitboxPart part)
 {
-    TileRange range = overlappedTiles(archer);
+    TileRange range = overlappedTiles(archer, part);
 
     for (int y = range.minY; y <= range.maxY; y++)
         for (int x = range.minX; x <= range.maxX; x++)
-            if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y))
+            if (isSolidRepeatedAt(level, x, y) && tileOverlapsArcher(archer, x, y, part))
                 return true;
 
     return false;
 }
 
 
-fight::collision::Contacts fight::collision::contactsAt(const Level& level, const Archer& archer)
+fight::collision::Contacts fight::collision::contactsAt(
+    const Level& level,
+    const Archer& archer,
+    ArcherHitboxPart part)
 {
     Contacts contacts;
     Archer probe = archer;
 
     probe.position.y += CONTACT_EPSILON;
-    contacts.ground = overlapsSolid(level, probe);
+    contacts.ground = overlapsSolid(level, probe, part);
 
     probe = archer;
     probe.position.y -= CONTACT_EPSILON;
-    contacts.ceiling = overlapsSolid(level, probe);
+    contacts.ceiling = overlapsSolid(level, probe, part);
 
     probe = archer;
     probe.position.x -= CONTACT_EPSILON;
-    contacts.leftWall = overlapsSolid(level, probe);
+    contacts.leftWall = overlapsSolid(level, probe, part);
 
     probe = archer;
     probe.position.x += CONTACT_EPSILON;
-    contacts.rightWall = overlapsSolid(level, probe);
+    contacts.rightWall = overlapsSolid(level, probe, part);
 
     return contacts;
 }
