@@ -17,6 +17,7 @@ add_executable(7dot_test
   archerCatalog.cpp
   fightCollision.cpp
   fightMovement.cpp
+  fightRendering.cpp
   inputBuffer.cpp
   level.cpp "../src/fight/collision.cpp" "../src/fight/level.cpp" "../src/fight/movement.cpp"
   stageMapCatalog.cpp

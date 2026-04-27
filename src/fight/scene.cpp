@@ -138,6 +138,7 @@ void fight::Scene::_initNewLevel(State& state)
         archer.jumpHoldTime = 0.0f;
         archer.autoMoveTime = 0.0f;
         archer.autoMoveDirection = 0;
+        archer.wallGrabDirection = 0;
         i++;
     }
 }

@@ -19,7 +19,7 @@ The fight state currently contains only the active level index and archers. `src
 
 `src/fight/collision.cpp:33` wraps solid lookups around the map and `src/fight/collision.cpp:201` wraps archers when fully outside the level. The level files have a `WrapMode` attribute, but the code does not yet respect per-level wrap settings.
 
-`src/constants.hpp:8` runs the simulation at 10 ms per tick, or 100 ticks per second. The TowerFall page reports timings in 60 fps frames, so timing constants should be stored in seconds or converted carefully.
+`src/constants.hpp:14` exposes `DELTA_T` from the configured `std::chrono::ticks` duration. The TowerFall page reports timings in 60 fps frames, so mechanic timings should be stored as seconds or converted from seconds through `DELTA_T`, not hardcoded to a fixed tick rate.
 
 ## Missing at a glance
 
@@ -38,23 +38,23 @@ The fight state currently contains only the active level index and archers. `src
 
 ## Timing conversion reference
 
-The source page appears to use 60 fps frame timings. At this repo's 100 Hz simulation tick rate, use time as the source of truth and round intentionally.
+The source page appears to use 60 fps frame timings. Use seconds as the source of truth so the game model survives a different TPS. Per-frame physics should receive `DELTA_T` as `deltaTime`; timers that can be fractional should store seconds and tick down by `deltaTime`. Only convert to integer ticks for discrete input windows or rollback-buffer comparisons, using an explicit helper such as `ceil(durationSeconds / DELTA_T)`.
 
-| Mechanic | Source timing | Repo timing target |
-| --- | --- | --- |
-| Wall jump auto move | 12 frames, 0.200 s | 20 ticks |
-| Ledge slip delay | 4 frames, 0.067 s | 7 ticks |
-| Buffered jump window | 6 frames, 0.100 s | 10 ticks |
-| Normal stored jump window | 6 frames, 0.100 s | 10 ticks |
-| Post-dodge stored jump window | 12 frames, 0.200 s | 20 ticks |
-| Twitch catch window | 3 frames, 0.050 s | 5 ticks |
-| Minimum dodge duration | 20 frames, 0.333 s | 33 ticks |
-| Maximum stalled dodge duration | 25 frames, 0.417 s | 42 ticks |
-| Dodge cooldown | 25 frames, 0.417 s | 42 ticks |
-| Minimum cancelled dodge duration | 2 frames, 0.033 s | 3 ticks |
-| Minimum non-cancel dodge interval | 45 frames, 0.750 s | 75 ticks |
-| Minimum perfect cancel interval | 27 frames, 0.450 s | 45 ticks |
-| Frame-perfect miracle catch window | 5 frames, 0.083 s | 8 ticks |
+| Mechanic | Source timing | Duration | Integer tick conversion when needed |
+| --- | --- | --- | --- |
+| Wall jump auto move | 12 frames | 0.200 s | `ceil((12.0 / 60.0) / DELTA_T)` |
+| Ledge slip delay | 4 frames | 0.067 s | `ceil((4.0 / 60.0) / DELTA_T)` |
+| Buffered jump window | 6 frames | 0.100 s | `ceil((6.0 / 60.0) / DELTA_T)` |
+| Normal stored jump window | 6 frames | 0.100 s | `ceil((6.0 / 60.0) / DELTA_T)` |
+| Post-dodge stored jump window | 12 frames | 0.200 s | `ceil((12.0 / 60.0) / DELTA_T)` |
+| Twitch catch window | 3 frames | 0.050 s | `ceil((3.0 / 60.0) / DELTA_T)` |
+| Minimum dodge duration | 20 frames | 0.333 s | `ceil((20.0 / 60.0) / DELTA_T)` |
+| Maximum stalled dodge duration | 25 frames | 0.417 s | `ceil((25.0 / 60.0) / DELTA_T)` |
+| Dodge cooldown | 25 frames | 0.417 s | `ceil((25.0 / 60.0) / DELTA_T)` |
+| Minimum cancelled dodge duration | 2 frames | 0.033 s | `ceil((2.0 / 60.0) / DELTA_T)` |
+| Minimum non-cancel dodge interval | 45 frames | 0.750 s | `ceil((45.0 / 60.0) / DELTA_T)` |
+| Minimum perfect cancel interval | 27 frames | 0.450 s | `ceil((27.0 / 60.0) / DELTA_T)` |
+| Frame-perfect miracle catch window | 5 frames | 0.083 s | `ceil((5.0 / 60.0) / DELTA_T)` |
 
 ## Work package 1: Basic archer control
 
@@ -147,12 +147,12 @@ Implement:
 
 - Fast-fall when airborne and holding Down, while still allowing horizontal input.
 - Wall slide when airborne and holding toward a wall, with reduced fall speed.
-- Wall jump from wall contact, with 20 ticks of forced up-and-away auto movement.
+- Wall jump from wall contact, with 0.200 s of forced up-and-away auto movement.
 - Ledge detection for clinging to a platform edge while holding toward it.
 - Ledge cling jump straight upward, and away+jump as a wall-jump-style release.
 - Allow Dodge from ledge cling while preserving cling when appropriate.
 - Release ledge cling when shooting.
-- Ledge slip when grounded within 3 pixels of a ledge and holding Down, after a 7 tick delay.
+- Ledge slip when grounded within 3 pixels of a ledge and holding Down, after a 0.067 s delay.
 - Ghost platform fall-through on Down+Jump, including same-tick landing fall-through without losing momentum.
 - Parse and simulate Jump Pads, including their interaction with later stored jumps.
 
@@ -218,9 +218,9 @@ Goal: layer in the advanced techniques from the page after basics are stable.
 
 Implement:
 
-- Buffered jump: accept Jump up to 10 ticks before touching a jumpable surface.
-- Stored jump: accept Jump up to 10 ticks after leaving a surface, or 20 ticks after leaving during a dodge.
-- Twitch catch: allow a Dodge input within 5 ticks after an arrow hit to convert the hit into a catch.
+- Buffered jump: accept Jump up to 0.100 s before touching a jumpable surface.
+- Stored jump: accept Jump up to 0.100 s after leaving a surface, or 0.200 s after leaving during a dodge.
+- Twitch catch: allow a Dodge input within 0.050 s after an arrow hit to convert the hit into a catch.
 - Dodge cancelling:
   - Tap-cancel by pressing the same or another Dodge button after the dodge has begun.
   - Jump-cancel when alongside a surface or when a stored jump is available.
@@ -291,6 +291,6 @@ Acceptance checks:
 
 1. Replace the temporary Shoot-to-next-level behavior with a debug-only command or remove it from normal fight updates.
 2. Expand `fight::Archer` with explicit movement, aim, jump, and dodge timing fields.
-3. Add a mechanics constants header for movement timings and convert source-page frame values to repo ticks.
+3. Add a mechanics constants header for movement timings, storing source-page frame values as seconds and converting through `DELTA_T` only where integer tick windows are required.
 4. Teach `Level` to store wrap mode from the level XML.
 5. Add deterministic tests for ground jump, variable jump hold, wall jump, and wrap mode before adding arrows.
