@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "renderer/FightTilemapCache.hpp"
+#include "renderer/StageMapView.hpp"
 #include "renderer/ViewportLayout.hpp"
 
 
@@ -15,6 +16,12 @@ namespace
         EXPECT_NEAR(rect.y, y, EPSILON);
         EXPECT_NEAR(rect.w, w, EPSILON);
         EXPECT_NEAR(rect.h, h, EPSILON);
+    }
+
+    void expectPoint(const SDL_FPoint& point, float x, float y)
+    {
+        EXPECT_NEAR(point.x, x, EPSILON);
+        EXPECT_NEAR(point.y, y, EPSILON);
     }
 
 }
@@ -71,6 +78,55 @@ TEST(ViewportLayoutTest, OddWindowSizesStayCenteredWithoutNegativeDeadSpace)
         EXPECT_GE(rect.w, 0.0f);
         EXPECT_GE(rect.h, 0.0f);
     }
+}
+
+
+TEST(StageMapViewTest, UsesUniformCoverScaleInsideStageViewport)
+{
+    renderer::ViewportLayout layout = renderer::computeViewportLayout(1600, 900, 320, 240);
+    renderer::StageMapView view = renderer::computeStageMapView(layout.mapRect, {240.0f, 240.0f});
+
+    EXPECT_FLOAT_EQ(view.scale, 2.5f);
+    expectRect(view.mapRect, 200.0f, -150.0f, 1200.0f, 1200.0f);
+}
+
+
+TEST(StageMapViewTest, KeepsCameraTargetAtViewportCenterWhenUnclampedAfterResize)
+{
+    SDL_FPoint cameraCenter {240.0f, 240.0f};
+    renderer::ViewportLayout smallLayout = renderer::computeViewportLayout(960, 720, 320, 240);
+    renderer::ViewportLayout largeLayout = renderer::computeViewportLayout(1280, 960, 320, 240);
+
+    renderer::StageMapView smallView = renderer::computeStageMapView(smallLayout.mapRect, cameraCenter);
+    renderer::StageMapView largeView = renderer::computeStageMapView(largeLayout.mapRect, cameraCenter);
+
+    expectPoint(smallView.worldToScreen(cameraCenter), 480.0f, 360.0f);
+    expectPoint(largeView.worldToScreen(cameraCenter), 640.0f, 480.0f);
+}
+
+
+TEST(StageMapViewTest, ClampsEdgeCameraWithoutExposingEmptySpace)
+{
+    renderer::ViewportLayout layout = renderer::computeViewportLayout(960, 720, 320, 240);
+    renderer::StageMapView view = renderer::computeStageMapView(layout.mapRect, {37.0f, 155.0f});
+
+    EXPECT_LE(view.mapRect.x, layout.mapRect.x);
+    EXPECT_LE(view.mapRect.y, layout.mapRect.y);
+    EXPECT_GE(view.mapRect.x + view.mapRect.w, layout.mapRect.x + layout.mapRect.w);
+    EXPECT_GE(view.mapRect.y + view.mapRect.h, layout.mapRect.y + layout.mapRect.h);
+}
+
+
+TEST(StageMapViewTest, AppliesSameTransformToPointsAndRects)
+{
+    SDL_FRect viewport {100.0f, 50.0f, 960.0f, 720.0f};
+    renderer::StageMapView view = renderer::computeStageMapView(viewport, {240.0f, 240.0f});
+    SDL_FPoint point = view.worldToScreen({210.0f, 210.0f});
+    SDL_FRect rect = view.worldRectToScreen(210.0f, 210.0f, 60.0f, 60.0f);
+
+    expectPoint(point, rect.x, rect.y);
+    EXPECT_FLOAT_EQ(rect.w, 120.0f);
+    EXPECT_FLOAT_EQ(rect.h, 120.0f);
 }
 
 

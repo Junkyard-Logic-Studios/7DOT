@@ -17,7 +17,7 @@ namespace
     };
 
 
-    constexpr std::array<ExpectedStageMapEntry, 12> EXPECTED_ENTRIES = {{
+    constexpr std::array<ExpectedStageMapEntry, 16> EXPECTED_ENTRIES = {{
         {fight::Stage::SACRED_GROUND,  "towerIcons/sacredGround",  71.0f, 114.0f},
         {fight::Stage::TWILIGHT_SPIRE, "towerIcons/twilightSpire", 140.0f, 174.0f},
         {fight::Stage::BACKFIRE,       "towerIcons/backfire",      216.0f, 98.0f},
@@ -30,6 +30,10 @@ namespace
         {fight::Stage::MOONSTONE,      "towerIcons/moonstone",     370.0f, 146.0f},
         {fight::Stage::TOWERFORGE,     "towerIcons/towerForge",    256.0f, 338.0f},
         {fight::Stage::ASCENSION,      "towerIcons/ascension",     413.0f, 300.0f},
+        {fight::Stage::THE_AMARANTH,   "towerIcons/theAmaranth",   37.0f, 155.0f},
+        {fight::Stage::DREADWOOD,      "towerIcons/dreadwood",     307.0f, 138.0f},
+        {fight::Stage::DARKFANG,       "towerIcons/darkfang",      245.0f, 66.0f},
+        {fight::Stage::CATACLYSM,      "towerIcons/cataclysm",     413.0f, 300.0f},
     }};
 
 
@@ -61,6 +65,10 @@ TEST(StageMapCatalogTest, ReadsExpectedIcons)
     EXPECT_EQ(catalog.find(fight::Stage::FROSTFANG_KEEP)->iconAtlasName, "towerIcons/frostfangKeep");
     EXPECT_EQ(catalog.find(fight::Stage::TOWERFORGE)->iconAtlasName, "towerIcons/towerForge");
     EXPECT_EQ(catalog.find(fight::Stage::ASCENSION)->iconAtlasName, "towerIcons/ascension");
+    EXPECT_EQ(catalog.find(fight::Stage::THE_AMARANTH)->iconAtlasName, "towerIcons/theAmaranth");
+    EXPECT_EQ(catalog.find(fight::Stage::DREADWOOD)->iconAtlasName, "towerIcons/dreadwood");
+    EXPECT_EQ(catalog.find(fight::Stage::DARKFANG)->iconAtlasName, "towerIcons/darkfang");
+    EXPECT_EQ(catalog.find(fight::Stage::CATACLYSM)->iconAtlasName, "towerIcons/cataclysm");
 }
 
 

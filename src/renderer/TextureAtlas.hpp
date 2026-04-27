@@ -19,10 +19,14 @@ public:
 	inline const SDL_Rect* getRect(const std::string &name) const;
 	inline void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
 	inline void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
+	inline void drawSource(SDL_Renderer *renderer, const SDL_FRect *srcrect, const SDL_FRect *dstrect);
 	inline void drawCover(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
 	inline void drawTiled(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect, float scale = 1.0f);
 	inline void drawFrame(SDL_Renderer *renderer, const std::string &name, int frameWidth, int frameHeight,
 		int frameIndex, const SDL_FRect *dstrect, bool fliphoriz = false);
+	inline void drawFrameSection(SDL_Renderer *renderer, const std::string &name, int frameWidth, int frameHeight,
+		int frameIndex, const SDL_FRect *dstrect, float cropLeft, float cropTop, float cropRight,
+		float cropBottom, bool fliphoriz = false);
 	inline void drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, const SDL_FRect& dstrect);
 	inline void drawTile(SDL_Renderer* renderer, const std::string& name, int8_t index, int x, int y);
 
@@ -135,6 +139,14 @@ inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, 
 	SDL_RenderTexture(renderer, texture, &src, dstrect ? dstrect : &default_dst);
 }
 
+inline void TextureAtlas::drawSource(SDL_Renderer *renderer, const SDL_FRect *srcrect, const SDL_FRect *dstrect)
+{
+	if (!texture || !srcrect)
+		return;
+
+	SDL_RenderTexture(renderer, texture, srcrect, dstrect);
+}
+
 inline void TextureAtlas::drawCover(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect)
 {
 	if (!dstrect || dstrect->w <= 0.0f || dstrect->h <= 0.0f)
@@ -216,6 +228,60 @@ inline void TextureAtlas::drawFrame(SDL_Renderer *renderer, const std::string &n
 	};
 	SDL_FRect default_dst = {0.0f, 0.0f, (float)frameWidth, (float)frameHeight};
 	SDL_RenderTextureRotated(renderer, texture, &src, dstrect ? dstrect : &default_dst, 0.0, nullptr,
+		fliphoriz ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
+}
+
+inline void TextureAtlas::drawFrameSection(SDL_Renderer *renderer, const std::string &name, int frameWidth,
+	int frameHeight, int frameIndex, const SDL_FRect *dstrect, float cropLeft, float cropTop, float cropRight,
+	float cropBottom, bool fliphoriz)
+{
+	if (frameIndex < 0 || frameWidth <= 0 || frameHeight <= 0)
+		return;
+
+	auto it = atlas.find(name);
+	if (it == atlas.end())
+	{
+		std::cerr << "Sprite not found in atlas: " << name << "\n";
+		return;
+	}
+
+	float croppedWidth = static_cast<float>(frameWidth) - cropLeft - cropRight;
+	float croppedHeight = static_cast<float>(frameHeight) - cropTop - cropBottom;
+	if (croppedWidth <= 0.0f || croppedHeight <= 0.0f)
+		return;
+
+	const SDL_Rect& r = it->second;
+	int columns = r.w / frameWidth;
+	if (columns <= 0)
+		return;
+
+	int frameX = frameIndex % columns;
+	int frameY = frameIndex / columns;
+	if ((frameY + 1) * frameHeight > r.h)
+		return;
+
+	SDL_FRect src = {
+		(float)r.x + frameX * frameWidth + cropLeft,
+		(float)r.y + frameY * frameHeight + cropTop,
+		croppedWidth,
+		croppedHeight
+	};
+
+	SDL_FRect defaultDst = {cropLeft, cropTop, croppedWidth, croppedHeight};
+	SDL_FRect croppedDst = defaultDst;
+	if (dstrect)
+	{
+		float scaleX = dstrect->w / static_cast<float>(frameWidth);
+		float scaleY = dstrect->h / static_cast<float>(frameHeight);
+		croppedDst = {
+			dstrect->x + cropLeft * scaleX,
+			dstrect->y + cropTop * scaleY,
+			croppedWidth * scaleX,
+			croppedHeight * scaleY
+		};
+	}
+
+	SDL_RenderTextureRotated(renderer, texture, &src, &croppedDst, 0.0, nullptr,
 		fliphoriz ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE);
 }
 

@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <algorithm>
+#include <stdexcept>
 #include "scene.hpp"
 #include "movement.hpp"
 #include "../renderer/fightRenderer.hpp"
@@ -48,6 +49,9 @@ void fight::Scene::_activate(SceneContext& context, State& startState)
         for (auto& entry : std::filesystem::directory_iterator(dir))
             if (entry.path().extension() == ".oel")
                 files.push_back(entry.path().string());
+
+        if (files.empty())
+            throw std::runtime_error("No level layouts found for stage: " + std::string(stageToName(_stage)));
         
         std::sort(files.begin(), files.end());
         _levels.reserve(files.size());

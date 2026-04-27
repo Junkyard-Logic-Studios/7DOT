@@ -19,6 +19,10 @@ namespace fight
         MOONSTONE      = 9,
         TOWERFORGE     = 10,
         ASCENSION      = 11,
+        THE_AMARANTH   = 12,
+        DREADWOOD      = 13,
+        DARKFANG       = 14,
+        CATACLYSM      = 15,
         MAX_ENUM
     };
 
@@ -39,6 +43,10 @@ namespace fight
         case Stage::MOONSTONE:      return "Moonstone";      
         case Stage::TOWERFORGE:     return "Towerforge";     
         case Stage::ASCENSION:      return "Ascension";
+        case Stage::THE_AMARANTH:   return "The Amaranth";
+        case Stage::DREADWOOD:      return "Dreadwood";
+        case Stage::DARKFANG:       return "Darkfang";
+        case Stage::CATACLYSM:      return "Cataclysm";
         default: return "[Unknown Stage]";
         };   
     }
@@ -85,6 +93,14 @@ namespace fight
         case fnHash("TowerForgeBG"):    return Stage::TOWERFORGE;
         case fnHash("Ascension"):
         case fnHash("AscensionBG"):     return Stage::ASCENSION;
+        case fnHash("TheAmaranth"):
+        case fnHash("TheAmaranthBG"):   return Stage::THE_AMARANTH;
+        case fnHash("Dreadwood"):
+        case fnHash("DreadwoodBG"):     return Stage::DREADWOOD;
+        case fnHash("Darkfang"):
+        case fnHash("DarkfangBG"):      return Stage::DARKFANG;
+        case fnHash("Cataclysm"):
+        case fnHash("CataclysmBG"):     return Stage::CATACLYSM;
         default: return Stage::MAX_ENUM;
         }
     }

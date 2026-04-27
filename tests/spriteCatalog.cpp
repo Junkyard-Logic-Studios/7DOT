@@ -35,3 +35,17 @@ TEST(SpriteCatalogTest, LoadsHeadOrigins)
     EXPECT_EQ(body.headXOrigins[0], 5);
     EXPECT_EQ(body.headYOrigins[0], 19);
 }
+
+
+TEST(SpriteCatalogTest, LoadsMenuMapAnimations)
+{
+    renderer::SpriteCatalog catalog(ASSET_DIR "Atlas/SpriteData/menuSpriteData.xml");
+
+    EXPECT_NE(catalog.get("boat").animation("idle"), nullptr);
+    EXPECT_NE(catalog.get("twilightSpire").animation("notSelected"), nullptr);
+    EXPECT_NE(catalog.get("twilightSpire").animation("selected"), nullptr);
+    EXPECT_NE(catalog.get("sunkenCityMap").animation("idleUp"), nullptr);
+    EXPECT_NE(catalog.get("towerForgeMap").animation("unlockSelected"), nullptr);
+    EXPECT_NE(catalog.get("ascensionUnlock").animation("unlockSelected"), nullptr);
+    EXPECT_NE(catalog.get("ghostShipMap").animation("up"), nullptr);
+}

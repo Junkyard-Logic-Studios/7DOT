@@ -3,10 +3,15 @@
 #include "../selection/scene.hpp"
 #include "ArcherCatalog.hpp"
 #include "StageMapCatalog.hpp"
+#include "StageMapView.hpp"
 #include "SpriteCatalog.hpp"
 #include "TextureAtlas.hpp"
+#include "ViewportLayout.hpp"
 #include "../fight/mode.hpp"
 #include "../fight/stage.hpp"
+#include <algorithm>
+#include <cmath>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 
@@ -20,6 +25,7 @@ namespace renderer
         {
             _menuAtlas.load(_sdlRenderer, ASSET_DIR "Atlas/menuAtlas.bmp", ASSET_DIR "Atlas/menuAtlas.xml");
             _stageMapCatalog.load(ASSET_DIR "Atlas/GameData/themeData.xml");
+            _menuSpriteCatalog.load(ASSET_DIR "Atlas/SpriteData/menuSpriteData.xml");
             validateStageMapAtlas();
             _atlas.load(_sdlRenderer, ASSET_DIR "Atlas/atlas.bmp", ASSET_DIR "Atlas/atlas.xml");
             _spriteCatalog.load(ASSET_DIR "Atlas/SpriteData/spriteData.xml");
@@ -53,7 +59,8 @@ namespace renderer
             int winw = 640, winh = 480;
             SDL_GetWindowSize(_sdlWindow, &winw, &winh);
             float x, y = winh / 5.0f;
-            SDL_FRect screenRect = {0.0f, 0.0f, (float)winw, (float)winh};
+            ViewportLayout stageLayout;
+            StageMapView stageView;
 
             // function to write a line of debug text
             auto fWriteLine = [&](const char *text)
@@ -89,8 +96,10 @@ namespace renderer
                 break;
 
             case opt::STAGE:
-                R = stageMapRect(winw, winh);
-                drawStageMap(R);
+                stageLayout = stageMapLayout(winw, winh);
+                stageView = stageMapView(stageLayout);
+                drawStageDeadSpace(stageLayout);
+                drawStageMap(stageView);
                 break;
             }
 
@@ -154,14 +163,15 @@ namespace renderer
                 break;
 
             case opt::STAGE:
-                drawStageIcons(stageMapRect(winw, winh));
-                y = winh * 0.8f;
+                drawStageIcons(stageView);
+                y = stageLayout.mapRect.y + stageLayout.mapRect.h * 0.8f;
                 fWriteLine("[ Stage ]");
                 {
                     char temp[32];
                     SDL_snprintf(temp, 32, "< %s >", fight::stageToName(_state.stage));
                     fWriteLine(temp);
                 }
+                drawStageIconCarousel(stageLayout.mapRect);
                 break;
             }
 
@@ -173,7 +183,17 @@ namespace renderer
         static constexpr float HEAD_Y_OFFSET = 0.0f;
         static constexpr float BOW_X_OFFSET = 0.0f;
         static constexpr float BOW_Y_OFFSET = 0.0f;
-        static constexpr float MAP_NATIVE_SIZE = 480.0f;
+        static constexpr float MAP_CAMERA_TRANSITION_SECONDS = 0.35f;
+        static constexpr float MAP_CURSOR_TRANSITION_SECONDS = 0.35f;
+        static constexpr float MAP_CURSOR_BOB_PERIOD_SECONDS = 1.2f;
+        static constexpr float MAP_CURSOR_BOB_PIXELS = 4.0f;
+        static constexpr float MAP_CURSOR_TARGET_GAP_PIXELS = 10.0f;
+        static constexpr float MAP_WATER_SWAY_SECONDS = 6.0f;
+        static constexpr float MAP_WATER_SWAY_PIXELS = 4.0f;
+        static constexpr float MAP_WATER_X_OFFSET_PIXELS = 3.0f;
+        static constexpr float MAP_WATER_ROW_TIME_OFFSET_SECONDS = 0.435f;
+        static constexpr float SUNKEN_CITY_ANIMATION_SPEED = 1.25f;
+        static constexpr float PI = 3.14159265358979323846f;
 
         void validateAtlasSprite(const std::string& name) const
         {
@@ -181,83 +201,599 @@ namespace renderer
                 throw std::runtime_error("Missing menu atlas sprite: " + name);
         }
 
+        void validateMenuSprite(const std::string& name) const
+        {
+            const SpriteDef* sprite = _menuSpriteCatalog.find(name);
+            if (!sprite)
+                throw std::runtime_error("Missing menu sprite data: " + name);
+            if (_menuAtlas.getRect(sprite->texture) == nullptr)
+                throw std::runtime_error("Missing menu atlas sprite: " + sprite->texture);
+        }
+
         void validateStageMapAtlas() const
         {
             validateAtlasSprite("mapWater");
             validateAtlasSprite("mapLand");
-            validateAtlasSprite("map/arrow");
+            validateAtlasSprite("mapCursor");
+            validateAtlasSprite("levelBlock");
+            validateAtlasSprite("darkLevelBlock");
+            validateMenuSprite("twilightSpire");
+            validateMenuSprite("boat");
+            validateMenuSprite("sunkenCityMap");
+            validateMenuSprite("towerForgeMap");
+            validateMenuSprite("ascensionUnlock");
+            validateMenuSprite("ghostShipMap");
+            validateMenuSprite("dreadwoodMap");
+            validateMenuSprite("darkfangMap");
+            validateMenuSprite("cataclysmMap");
 
             for (const auto& entry : _stageMapCatalog.entries())
                 validateAtlasSprite(entry.iconAtlasName);
         }
 
-        SDL_FRect stageMapRect(int winw, int winh) const
+        ViewportLayout stageMapLayout(int winw, int winh) const
         {
-            return {0.0f, 0.0f, static_cast<float>(winw), static_cast<float>(winh)};
+            return computeViewportLayout(winw, winh, 320, 240);
         }
 
-        SDL_FPoint mapToScreen(const SDL_FRect& mapRect, SDL_FPoint mapPosition) const
+        SDL_FPoint lerpPoint(SDL_FPoint from, SDL_FPoint to, float t) const
         {
             return {
-                mapRect.x + (mapPosition.x / MAP_NATIVE_SIZE) * mapRect.w,
-                mapRect.y + (mapPosition.y / MAP_NATIVE_SIZE) * mapRect.h
+                from.x + (to.x - from.x) * t,
+                from.y + (to.y - from.y) * t
             };
         }
 
-        float stageMapVisualScale(const SDL_FRect& mapRect) const
+        float smoothstep(float t) const
         {
-            return mapRect.h / MAP_NATIVE_SIZE;
+            t = std::clamp(t, 0.0f, 1.0f);
+            return t * t * (3.0f - 2.0f * t);
         }
 
-        void drawStageMap(const SDL_FRect& mapRect)
+        SDL_FPoint selectedStageMapPosition() const
         {
-            _menuAtlas.draw(_sdlRenderer, "mapWater", &mapRect);
-            _menuAtlas.draw(_sdlRenderer, "mapLand", &mapRect);
+            const StageMapEntry* entry = _stageMapCatalog.find(_state.stage);
+            return entry ? entry->mapPosition : SDL_FPoint {StageMapView::NATIVE_SIZE * 0.5f,
+                StageMapView::NATIVE_SIZE * 0.5f};
         }
 
-        void drawStageIcon(const StageMapEntry& entry, const SDL_FRect& mapRect)
+        SDL_FPoint mapCameraCenterAt(Uint64 now) const
         {
-            SDL_FPoint center = mapToScreen(mapRect, entry.mapPosition);
-            float visualScale = stageMapVisualScale(mapRect);
-            float size = 16.0f * visualScale;
+            if (!_mapCameraInitialized)
+                return selectedStageMapPosition();
+
+            float elapsedSeconds = static_cast<float>(now - _mapCameraStartTicks) / 1000.0f;
+            float t = smoothstep(elapsedSeconds / MAP_CAMERA_TRANSITION_SECONDS);
+            return lerpPoint(_mapCameraStart, _mapCameraTarget, t);
+        }
+
+        SDL_FPoint updateStageMapCamera(Uint64 now)
+        {
+            SDL_FPoint target = selectedStageMapPosition();
+            if (!_mapCameraInitialized)
+            {
+                _mapCameraStart = target;
+                _mapCameraTarget = target;
+                _mapCameraStage = _state.stage;
+                _mapCameraStartTicks = now;
+                _mapCameraInitialized = true;
+                return target;
+            }
+
+            if (_mapCameraStage != _state.stage)
+            {
+                _mapCameraStart = mapCameraCenterAt(now);
+                _mapCameraTarget = target;
+                _mapCameraStage = _state.stage;
+                _mapCameraStartTicks = now;
+            }
+
+            return mapCameraCenterAt(now);
+        }
+
+        SDL_FPoint mapCursorPositionAt(Uint64 now) const
+        {
+            if (!_mapCursorInitialized)
+                return selectedStageMapPosition();
+
+            float elapsedSeconds = static_cast<float>(now - _mapCursorStartTicks) / 1000.0f;
+            float t = smoothstep(elapsedSeconds / MAP_CURSOR_TRANSITION_SECONDS);
+            return lerpPoint(_mapCursorStart, _mapCursorTarget, t);
+        }
+
+        float mapCursorTransitionProgress(Uint64 now) const
+        {
+            if (!_mapCursorInitialized)
+                return 1.0f;
+
+            float elapsedSeconds = static_cast<float>(now - _mapCursorStartTicks) / 1000.0f;
+            return std::clamp(elapsedSeconds / MAP_CURSOR_TRANSITION_SECONDS, 0.0f, 1.0f);
+        }
+
+        SDL_FPoint updateStageMapCursor(Uint64 now)
+        {
+            SDL_FPoint target = selectedStageMapPosition();
+            if (!_mapCursorInitialized)
+            {
+                _mapCursorStart = target;
+                _mapCursorTarget = target;
+                _mapCursorStage = _state.stage;
+                _mapCursorStartTicks = now;
+                _mapCursorInitialized = true;
+                return target;
+            }
+
+            if (_mapCursorStage != _state.stage)
+            {
+                _mapCursorStart = mapCursorPositionAt(now);
+                _mapCursorTarget = target;
+                _mapCursorStage = _state.stage;
+                _mapCursorStartTicks = now;
+            }
+
+            return mapCursorPositionAt(now);
+        }
+
+        float mapCursorBobOffset(Uint64 now) const
+        {
+            float transitionProgress = mapCursorTransitionProgress(now);
+            if (transitionProgress < 1.0f)
+                return 0.0f;
+
+            float elapsedSeconds = static_cast<float>(now - _mapCursorStartTicks) / 1000.0f;
+            return std::sin((elapsedSeconds / MAP_CURSOR_BOB_PERIOD_SECONDS) * PI * 2.0f) *
+                MAP_CURSOR_BOB_PIXELS;
+        }
+
+        const SpriteAnimation* mapActorAnimation(const SpriteDef& sprite, const std::string& animationId) const
+        {
+            const SpriteAnimation* animation = sprite.animation(animationId);
+            if (animation)
+                return animation;
+
+            animation = sprite.animation("idle");
+            if (animation)
+                return animation;
+
+            return sprite.animations.empty() ? nullptr : &sprite.animations.begin()->second;
+        }
+
+        void drawMapSpriteAnimation(
+            const std::string& spriteId,
+            const std::string& animationId,
+            const StageMapView& view,
+            float elapsedSeconds,
+            bool hasAnchor = false,
+            SDL_FPoint anchor = {0.0f, 0.0f},
+            float cropLeft = 0.0f,
+            float cropTop = 0.0f,
+            float cropRight = 0.0f,
+            float cropBottom = 0.0f,
+            bool anchorIsCenter = false)
+        {
+            const SpriteDef* sprite = _menuSpriteCatalog.find(spriteId);
+            if (!sprite)
+                return;
+
+            const SpriteAnimation* animation = mapActorAnimation(*sprite, animationId);
+            if (!animation)
+                return;
+
+            SDL_FPoint world = hasAnchor ? anchor : SDL_FPoint {
+                static_cast<float>(sprite->x),
+                static_cast<float>(sprite->y)
+            };
+            if (hasAnchor && anchorIsCenter)
+            {
+                world.x -= sprite->frameWidth * 0.5f;
+                world.y -= sprite->frameHeight * 0.5f;
+            }
+            int frame = animationFrameAt(*animation, elapsedSeconds);
+            SDL_FRect dst = view.worldRectToScreen(
+                world.x - static_cast<float>(sprite->originX),
+                world.y - static_cast<float>(sprite->originY),
+                static_cast<float>(sprite->frameWidth),
+                static_cast<float>(sprite->frameHeight));
+
+            if (cropLeft > 0.0f || cropTop > 0.0f || cropRight > 0.0f || cropBottom > 0.0f)
+            {
+                _menuAtlas.drawFrameSection(_sdlRenderer, sprite->texture, sprite->frameWidth,
+                    sprite->frameHeight, frame, &dst, cropLeft, cropTop, cropRight, cropBottom);
+            }
+            else
+            {
+                _menuAtlas.drawFrame(_sdlRenderer, sprite->texture, sprite->frameWidth, sprite->frameHeight,
+                    frame, &dst);
+            }
+        }
+
+        SDL_FPoint stageMapPosition(fight::Stage stage) const
+        {
+            const StageMapEntry* entry = _stageMapCatalog.find(stage);
+            return entry ? entry->mapPosition : SDL_FPoint {0.0f, 0.0f};
+        }
+
+        void drawStageMapActors(const StageMapView& view)
+        {
+            float elapsedSeconds = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+
+            drawMapSpriteAnimation("boat", "idle", view, elapsedSeconds);
+            drawMapSpriteAnimation("twilightSpire",
+                _state.stage == fight::Stage::TWILIGHT_SPIRE ? "selected" : "notSelected",
+                view, elapsedSeconds);
+            drawMapSpriteAnimation("towerForgeMap",
+                _state.stage == fight::Stage::TOWERFORGE ? "unlockSelected" : "unlockNotSelected",
+                view, elapsedSeconds, false, {0.0f, 0.0f}, 4.0f);
+            drawMapSpriteAnimation("ascensionUnlock", "unlockNotSelected",
+                view, elapsedSeconds, false, {0.0f, 0.0f}, 8.0f);
+
+        }
+
+        StageMapView stageMapView(const ViewportLayout& layout)
+        {
+            return computeStageMapView(layout.mapRect, updateStageMapCamera(SDL_GetTicks()));
+        }
+
+        void drawFillerCoverOutward(
+            TextureAtlas& atlas,
+            const std::string& asset,
+            const SDL_FRect& rect,
+            int anchorX,
+            int anchorY)
+        {
+            const SDL_Rect* source = atlas.getRect(asset);
+            if (!source || rect.w <= 0.0f || rect.h <= 0.0f || source->w <= 0 || source->h <= 0)
+                return;
+
+            float scale = std::max(
+                rect.w / static_cast<float>(source->w),
+                rect.h / static_cast<float>(source->h));
             SDL_FRect dst = {
-                center.x - size * 0.5f,
-                center.y - size * 0.5f,
-                size,
-                size
+                rect.x + (rect.w - source->w * scale) * 0.5f,
+                rect.y + (rect.h - source->h * scale) * 0.5f,
+                source->w * scale,
+                source->h * scale
             };
-            _menuAtlas.draw(_sdlRenderer, entry.iconAtlasName, &dst);
+
+            if (anchorX > 0)
+                dst.x = rect.x + rect.w - dst.w;
+            else if (anchorX < 0)
+                dst.x = rect.x;
+
+            if (anchorY > 0)
+                dst.y = rect.y + rect.h - dst.h;
+            else if (anchorY < 0)
+                dst.y = rect.y;
+
+            atlas.draw(_sdlRenderer, asset, &dst);
         }
 
-        void drawSelectedStagePointer(const SDL_FRect& mapRect)
+        void drawStageDeadSpace(const ViewportLayout& layout)
+        {
+            const SDL_FRect& left = layout.deadSpace[0];
+            if (left.w > 0.0f && left.h > 0.0f)
+                drawFillerCoverOutward(_atlas, "aspectBarLeft", left, 1, 0);
+
+            const SDL_FRect& right = layout.deadSpace[1];
+            if (right.w > 0.0f && right.h > 0.0f)
+                drawFillerCoverOutward(_atlas, "aspectBarRight", right, -1, 0);
+
+            const SDL_FRect& top = layout.deadSpace[2];
+            if (top.w > 0.0f && top.h > 0.0f)
+                drawFillerCoverOutward(_menuAtlas, "towerTile", top, 0, 1);
+
+            const SDL_FRect& bottom = layout.deadSpace[3];
+            if (bottom.w > 0.0f && bottom.h > 0.0f)
+                drawFillerCoverOutward(_menuAtlas, "towerTile", bottom, 0, -1);
+        }
+
+        void drawStageMap(const StageMapView& view)
+        {
+            const SDL_Rect* water = _menuAtlas.getRect("mapWater");
+            if (water)
+            {
+                float seconds = static_cast<float>(SDL_GetTicks()) / 1000.0f;
+                float rowHeight = view.mapRect.h / static_cast<float>(water->h);
+                float waterWidth = std::min(
+                    StageMapView::NATIVE_SIZE,
+                    static_cast<float>(water->w) - MAP_WATER_SWAY_PIXELS);
+
+                for (int row = 0; row < water->h; row++)
+                {
+                    float phaseSeconds = seconds + row * MAP_WATER_ROW_TIME_OFFSET_SECONDS;
+                    float wave = (std::sin((phaseSeconds / MAP_WATER_SWAY_SECONDS) * PI * 2.0f) + 1.0f) * 0.5f;
+                    float offset = std::round(wave * MAP_WATER_SWAY_PIXELS);
+                    SDL_FRect src = {
+                        static_cast<float>(water->x) + MAP_WATER_X_OFFSET_PIXELS + offset,
+                        static_cast<float>(water->y + row),
+                        waterWidth,
+                        1.0f
+                    };
+                    SDL_FRect dst = {
+                        view.mapRect.x,
+                        view.mapRect.y + row * rowHeight,
+                        view.mapRect.w,
+                        rowHeight + 0.5f
+                    };
+
+                    _menuAtlas.drawSource(_sdlRenderer, &src, &dst);
+                }
+            }
+            _menuAtlas.draw(_sdlRenderer, "mapLand", &view.mapRect);
+        }
+
+        const char* selectedStageMapSpriteId() const
+        {
+            switch (_state.stage)
+            {
+            case fight::Stage::THE_AMARANTH: return "ghostShipMap";
+            case fight::Stage::DREADWOOD:    return "dreadwoodMap";
+            case fight::Stage::DARKFANG:     return "darkfangMap";
+            case fight::Stage::CATACLYSM:    return "cataclysmMap";
+            default:                         return nullptr;
+            }
+        }
+
+        bool usesDarkStageSlate(fight::Stage stage) const
+        {
+            return stage == fight::Stage::THE_AMARANTH ||
+                stage == fight::Stage::DREADWOOD ||
+                stage == fight::Stage::DARKFANG ||
+                stage == fight::Stage::CATACLYSM;
+        }
+
+        int animationFrameAt(const SpriteAnimation& animation, float elapsedSeconds) const
+        {
+            if (animation.frames.empty())
+                return 0;
+
+            if (animation.delay <= 0.0f)
+                return animation.frames.front();
+
+            int frameIndex = static_cast<int>(elapsedSeconds / animation.delay);
+            if (animation.loop)
+                frameIndex %= static_cast<int>(animation.frames.size());
+            else
+                frameIndex = std::min(frameIndex, static_cast<int>(animation.frames.size()) - 1);
+
+            return animation.frames[static_cast<std::size_t>(frameIndex)];
+        }
+
+        float animationDuration(const SpriteAnimation& animation) const
+        {
+            return animation.delay * static_cast<float>(animation.frames.size());
+        }
+
+        void updateSelectedMapAnimation(Uint64 now)
+        {
+            if (_animatedMapStage != _state.stage)
+            {
+                _animatedMapStage = _state.stage;
+                _animatedMapStartTicks = now;
+            }
+        }
+
+        void updateSunkenCityAnimation(Uint64 now)
+        {
+            bool targetSelected = _state.stage == fight::Stage::SUNKEN_CITY;
+            if (!_sunkenCityAnimationInitialized)
+            {
+                _sunkenCitySelected = targetSelected;
+                _sunkenCityTargetSelected = targetSelected;
+                _sunkenCityAnimationStartTicks = now;
+                _sunkenCityAnimationInitialized = true;
+                return;
+            }
+
+            if (_sunkenCityTargetSelected != targetSelected)
+            {
+                _sunkenCitySelected = _sunkenCityTargetSelected;
+                _sunkenCityTargetSelected = targetSelected;
+                _sunkenCityAnimationStartTicks = now;
+            }
+        }
+
+        void drawSunkenCityMap(const StageMapView& view)
+        {
+            const SpriteDef* sprite = _menuSpriteCatalog.find("sunkenCityMap");
+            if (!sprite)
+                return;
+
+            Uint64 now = SDL_GetTicks();
+            updateSunkenCityAnimation(now);
+
+            float elapsedSeconds = static_cast<float>(now - _sunkenCityAnimationStartTicks) /
+                1000.0f * SUNKEN_CITY_ANIMATION_SPEED;
+            const SpriteAnimation* animation = nullptr;
+            float animationElapsedSeconds = elapsedSeconds;
+
+            if (_sunkenCityTargetSelected != _sunkenCitySelected)
+            {
+                animation = sprite->animation(_sunkenCityTargetSelected ? "up" : "down");
+                if (animation && elapsedSeconds >= animationDuration(*animation))
+                {
+                    _sunkenCitySelected = _sunkenCityTargetSelected;
+                    animationElapsedSeconds = 0.0f;
+                    animation = nullptr;
+                }
+            }
+
+            if (!animation)
+                animation = sprite->animation(_sunkenCityTargetSelected ? "idleUp" : "idle");
+            if (!animation)
+                return;
+
+            int frame = animationFrameAt(*animation, animationElapsedSeconds);
+            SDL_FPoint center = stageMapPosition(fight::Stage::SUNKEN_CITY);
+            SDL_FRect dst = view.worldRectToScreen(
+                center.x - sprite->frameWidth * 0.5f - static_cast<float>(sprite->originX),
+                center.y - sprite->frameHeight * 0.5f - static_cast<float>(sprite->originY),
+                static_cast<float>(sprite->frameWidth),
+                static_cast<float>(sprite->frameHeight));
+
+            _menuAtlas.drawFrame(_sdlRenderer, sprite->texture, sprite->frameWidth, sprite->frameHeight,
+                frame, &dst);
+        }
+
+        void drawSelectedStageMapAnimation(const StageMapView& view)
+        {
+            const char* spriteId = selectedStageMapSpriteId();
+            if (!spriteId)
+                return;
+
+            const SpriteDef* sprite = _menuSpriteCatalog.find(spriteId);
+            if (!sprite)
+                return;
+
+            Uint64 now = SDL_GetTicks();
+            updateSelectedMapAnimation(now);
+
+            float elapsedSeconds = static_cast<float>(now - _animatedMapStartTicks) / 1000.0f;
+            const SpriteAnimation* up = sprite->animation("up");
+            const SpriteAnimation* idleUp = sprite->animation("idleUp");
+            const SpriteAnimation* animation = idleUp ? idleUp : sprite->animation("idle");
+            float animationElapsedSeconds = elapsedSeconds;
+
+            if (up && elapsedSeconds < animationDuration(*up))
+            {
+                animation = up;
+            }
+            else if (up)
+            {
+                animationElapsedSeconds = elapsedSeconds - animationDuration(*up);
+            }
+
+            if (!animation)
+                return;
+
+            int frame = animationFrameAt(*animation, animationElapsedSeconds);
+            SDL_FPoint world = {
+                static_cast<float>(sprite->x),
+                static_cast<float>(sprite->y)
+            };
+
+            SDL_FRect dst = view.worldRectToScreen(
+                world.x - static_cast<float>(sprite->originX),
+                world.y - static_cast<float>(sprite->originY),
+                static_cast<float>(sprite->frameWidth),
+                static_cast<float>(sprite->frameHeight));
+            _menuAtlas.drawFrame(_sdlRenderer, sprite->texture, sprite->frameWidth, sprite->frameHeight,
+                frame, &dst);
+        }
+
+        void drawSelectedStagePointer(const StageMapView& view)
         {
             const StageMapEntry* entry = _stageMapCatalog.find(_state.stage);
             if (!entry)
                 return;
 
-            drawStageIcon(*entry, mapRect);
-
-            const SDL_Rect* arrow = _menuAtlas.getRect("map/arrow");
-            if (!arrow)
+            const SDL_Rect* cursor = _menuAtlas.getRect("mapCursor");
+            if (!cursor)
                 return;
 
-            SDL_FPoint target = mapToScreen(mapRect, entry->mapPosition);
-            float visualScale = stageMapVisualScale(mapRect);
+            Uint64 now = SDL_GetTicks();
+            SDL_FPoint cursorPosition = updateStageMapCursor(now);
+            SDL_FPoint target = view.worldToScreen(cursorPosition);
+            float bobOffset = mapCursorBobOffset(now) * view.scale;
             SDL_FRect dst = {
-                target.x - arrow->w * visualScale * 0.5f,
-                target.y - (arrow->h + 12.0f) * visualScale,
-                arrow->w * visualScale,
-                arrow->h * visualScale
+                target.x - cursor->w * view.scale * 0.5f,
+                target.y - (cursor->h + MAP_CURSOR_TARGET_GAP_PIXELS) * view.scale + bobOffset,
+                cursor->w * view.scale,
+                cursor->h * view.scale
             };
-            _menuAtlas.draw(_sdlRenderer, "map/arrow", &dst);
+            _menuAtlas.draw(_sdlRenderer, "mapCursor", &dst);
         }
 
-        void drawStageIcons(const SDL_FRect& mapRect)
+        void drawStageIcons(const StageMapView& view)
         {
-            for (const auto& entry : _stageMapCatalog.entries())
-                drawStageIcon(entry, mapRect);
+            drawStageMapActors(view);
+            drawSunkenCityMap(view);
+            drawSelectedStageMapAnimation(view);
+            drawSelectedStagePointer(view);
+        }
 
-            drawSelectedStagePointer(mapRect);
+        int selectedStageIndex() const
+        {
+            const auto& entries = _stageMapCatalog.entries();
+            auto it = std::find_if(entries.begin(), entries.end(),
+                [&](const StageMapEntry& entry)
+                {
+                    return entry.stage == _state.stage;
+                });
+
+            return it == entries.end() ? 0 : static_cast<int>(std::distance(entries.begin(), it));
+        }
+
+        void updateStageCarouselAnimation()
+        {
+            int targetIndex = selectedStageIndex();
+            Uint64 now = SDL_GetTicks();
+            if (!_stageCarouselInitialized)
+            {
+                _stageCarouselPosition = static_cast<float>(targetIndex);
+                _lastCarouselTicks = now;
+                _stageCarouselInitialized = true;
+                return;
+            }
+
+            float deltaSeconds = static_cast<float>(now - _lastCarouselTicks) / 1000.0f;
+            _lastCarouselTicks = now;
+            float target = static_cast<float>(targetIndex);
+            float blend = std::clamp(deltaSeconds * 14.0f, 0.0f, 1.0f);
+            _stageCarouselPosition += (target - _stageCarouselPosition) * blend;
+            if (std::fabs(target - _stageCarouselPosition) < 0.01f)
+                _stageCarouselPosition = target;
+        }
+
+        void drawStageIconCarousel(const SDL_FRect& viewport)
+        {
+            const auto& entries = _stageMapCatalog.entries();
+            if (entries.empty())
+                return;
+
+            updateStageCarouselAnimation();
+
+            constexpr float nativeTile = 30.0f;
+            float scale = std::clamp(viewport.h / 360.0f, 1.0f, 2.0f);
+            float tileSize = nativeTile * scale;
+            float spacing = tileSize + 8.0f * scale;
+            float centerX = viewport.x + viewport.w * 0.5f;
+            float rowCenterY = viewport.y + viewport.h - tileSize * 0.65f;
+            float selectedIndex = static_cast<float>(selectedStageIndex());
+            int sideVisibleCount = static_cast<int>(std::ceil((viewport.w * 0.5f) / spacing)) + 2;
+            int firstVisible = std::max(0,
+                static_cast<int>(std::floor(_stageCarouselPosition)) - sideVisibleCount);
+            int lastVisible = std::min(static_cast<int>(entries.size()) - 1,
+                static_cast<int>(std::ceil(_stageCarouselPosition)) + sideVisibleCount);
+
+            for (int i = firstVisible; i <= lastVisible; i++)
+            {
+                const StageMapEntry& entry = entries[static_cast<std::size_t>(i)];
+                float offset = (static_cast<float>(i) - _stageCarouselPosition) * spacing;
+                float distanceFromSelected = std::fabs(static_cast<float>(i) - selectedIndex);
+                float focusLift = std::max(0.0f, 1.0f - distanceFromSelected) * 4.0f * scale;
+                float tileScale = scale * (distanceFromSelected < 0.01f ? 1.18f : 1.0f);
+                float currentTileSize = nativeTile * tileScale;
+                float currentIconSize = 16.0f * tileScale;
+                float tileX = centerX + offset - currentTileSize * 0.5f;
+                float tileY = rowCenterY - currentTileSize * 0.5f - focusLift;
+
+                if (tileX > viewport.x + viewport.w || tileX + currentTileSize < viewport.x)
+                    continue;
+
+                SDL_FRect tileDst = {tileX, tileY, currentTileSize, currentTileSize};
+                _menuAtlas.draw(_sdlRenderer,
+                    usesDarkStageSlate(entry.stage) ? "darkLevelBlock" : "levelBlock",
+                    &tileDst);
+
+                SDL_FRect iconDst = {
+                    tileX + (currentTileSize - currentIconSize) * 0.5f,
+                    tileY + (currentTileSize - currentIconSize) * 0.5f,
+                    currentIconSize,
+                    currentIconSize
+                };
+                _menuAtlas.draw(_sdlRenderer, entry.iconAtlasName, &iconDst);
+            }
         }
 
         const ArcherSkin *previewSkin(unsigned int character) const
@@ -381,9 +917,29 @@ namespace renderer
         TextureAtlas _menuAtlas;
         TextureAtlas _atlas;
         SpriteCatalog _spriteCatalog;
+        SpriteCatalog _menuSpriteCatalog;
         ArcherCatalog _archerCatalog;
         StageMapCatalog _stageMapCatalog;
         State _state;
+        float _stageCarouselPosition = 0.0f;
+        Uint64 _lastCarouselTicks = 0;
+        Uint64 _animatedMapStartTicks = 0;
+        Uint64 _sunkenCityAnimationStartTicks = 0;
+        Uint64 _mapCameraStartTicks = 0;
+        Uint64 _mapCursorStartTicks = 0;
+        SDL_FPoint _mapCameraStart {StageMapView::NATIVE_SIZE * 0.5f, StageMapView::NATIVE_SIZE * 0.5f};
+        SDL_FPoint _mapCameraTarget {StageMapView::NATIVE_SIZE * 0.5f, StageMapView::NATIVE_SIZE * 0.5f};
+        SDL_FPoint _mapCursorStart {StageMapView::NATIVE_SIZE * 0.5f, StageMapView::NATIVE_SIZE * 0.5f};
+        SDL_FPoint _mapCursorTarget {StageMapView::NATIVE_SIZE * 0.5f, StageMapView::NATIVE_SIZE * 0.5f};
+        fight::Stage _animatedMapStage = fight::Stage::MAX_ENUM;
+        fight::Stage _mapCameraStage = fight::Stage::MAX_ENUM;
+        fight::Stage _mapCursorStage = fight::Stage::MAX_ENUM;
+        bool _stageCarouselInitialized = false;
+        bool _sunkenCityAnimationInitialized = false;
+        bool _sunkenCitySelected = false;
+        bool _sunkenCityTargetSelected = false;
+        bool _mapCameraInitialized = false;
+        bool _mapCursorInitialized = false;
     };
 
 }; // end namespace renderer
