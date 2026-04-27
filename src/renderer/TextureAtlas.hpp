@@ -17,6 +17,7 @@ public:
 	inline bool load(SDL_Renderer *renderer, const std::string &imagePath, const std::string &xmlPath);
 	inline void unload();
 	inline const SDL_Rect* getRect(const std::string &name) const;
+	inline void setColorModFloat(float r, float g, float b);
 	inline void draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale = 1.0f, bool fliphoriz = false);
 	inline void draw(SDL_Renderer *renderer, const std::string &name, const SDL_FRect *dstrect);
 	inline void drawSource(SDL_Renderer *renderer, const SDL_FRect *srcrect, const SDL_FRect *dstrect);
@@ -104,6 +105,12 @@ inline const SDL_Rect* TextureAtlas::getRect(const std::string &name) const
 {
 	auto it = atlas.find(name);
 	return it == atlas.end() ? nullptr : &it->second;
+}
+
+inline void TextureAtlas::setColorModFloat(float r, float g, float b)
+{
+	if (texture)
+		SDL_SetTextureColorModFloat(texture, r, g, b);
 }
 
 inline void TextureAtlas::draw(SDL_Renderer *renderer, const std::string &name, float x, float y, float scale, bool fliphoriz)

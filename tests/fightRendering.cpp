@@ -91,6 +91,16 @@ TEST(StageMapViewTest, UsesUniformCoverScaleInsideStageViewport)
 }
 
 
+TEST(StageMapViewTest, AppliesAdditionalZoomForSelectionMapCamera)
+{
+    renderer::ViewportLayout layout = renderer::computeViewportLayout(960, 720, 320, 240);
+    renderer::StageMapView view = renderer::computeStageMapView(layout.mapRect, {425.0f, 300.0f}, 1.5f);
+
+    EXPECT_FLOAT_EQ(view.scale, 3.0f);
+    expectRect(view.mapRect, -480.0f, -540.0f, 1440.0f, 1440.0f);
+}
+
+
 TEST(StageMapViewTest, KeepsCameraTargetAtViewportCenterWhenUnclampedAfterResize)
 {
     SDL_FPoint cameraCenter {240.0f, 240.0f};

@@ -35,14 +35,15 @@ namespace renderer
     };
 
 
-    inline StageMapView computeStageMapView(const SDL_FRect& viewport, SDL_FPoint cameraCenter)
+    inline StageMapView computeStageMapView(const SDL_FRect& viewport, SDL_FPoint cameraCenter,
+        float zoom = 1.0f)
     {
         StageMapView view;
         if (viewport.w <= 0.0f || viewport.h <= 0.0f)
             return view;
 
         view.scale = std::max(viewport.w / StageMapView::NATIVE_SIZE,
-            viewport.h / StageMapView::NATIVE_SIZE);
+            viewport.h / StageMapView::NATIVE_SIZE) * std::max(zoom, 1.0f);
 
         float mapSize = StageMapView::NATIVE_SIZE * view.scale;
         view.origin = {
