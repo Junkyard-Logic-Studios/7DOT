@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+
+# Sourcing this script would apply `set -euo pipefail` and any `exit` calls to
+# the caller's interactive shell. Refuse early, before changing shell options.
+if [[ -n "${ZSH_EVAL_CONTEXT:-}" && "$ZSH_EVAL_CONTEXT" == *:file ]] ||
+	[[ -n "${BASH_VERSION:-}" && "${BASH_SOURCE[0]}" != "$0" ]]; then
+	printf 'This script must be executed, not sourced. Run: ./build.sh\n' >&2
+	return 1
+fi
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -269,8 +278,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$START" -eq 1 ]]; then
-  run_normal
-  exit 1
+	run_normal
+	exit 0
 fi
 
 if [[ -z "$JOBS" ]]; then

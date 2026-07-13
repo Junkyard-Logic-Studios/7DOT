@@ -1,6 +1,7 @@
 #include "fightRenderer.hpp"
 #include "pugixml.hpp"
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <cmath>
 #include <stdexcept>
@@ -115,6 +116,7 @@ renderer::FightRenderer::~FightRenderer()
     destroyTexture(_tilemapTexture);
     destroyTexture(_worldTexture);
     _menuAtlas.unload();
+    _customAtlas.unload();
     _atlas.unload();
     _bgAtlas.unload();
 }
@@ -245,6 +247,12 @@ int renderer::FightRenderer::drawSpritePart(
 
 void renderer::FightRenderer::drawArcher(const fight::Archer& archer, const Player& player)
 {
+    if (const auto* custom = customCharacter(player.character))
+    {
+        drawCustomArcher(archer, player, *custom);
+        return;
+    }
+
     if (_archerCatalog.validBaseCount() == 0)
         return;
 
@@ -283,6 +291,123 @@ void renderer::FightRenderer::drawArcher(const fight::Archer& archer, const Play
 
     if (!bow->hideBowIdle)
         drawSpritePart(*bow, "idle", archer.position, player, fliphoriz, NAN, BOW_X_OFFSET, BOW_Y_OFFSET);
+}
+
+
+const charactereditor::CustomCharacter* renderer::FightRenderer::customCharacter(
+    unsigned int character) const
+{
+    const std::size_t builtInCount = _archerCatalog.validBaseCount();
+    if (character < builtInCount)
+        return nullptr;
+
+    const std::size_t customIndex = static_cast<std::size_t>(character) - builtInCount;
+    const auto& characters = _customCharacters.characters();
+    return customIndex < characters.size() ? &characters[customIndex] : nullptr;
+}
+
+
+const charactereditor::Canvas* renderer::FightRenderer::customCanvas(
+    const charactereditor::CustomCharacter& character, const char* id) const
+{
+    return charactereditor::CharacterStore::canvas(character, id);
+}
+
+
+void renderer::FightRenderer::drawCustomArcher(
+    const fight::Archer& archer,
+    const Player& player,
+    const charactereditor::CustomCharacter& character)
+{
+    (void)player;
+    if (!_customAtlasLoaded)
+        return;
+
+    const std::string animationId = chooseBodyAnimation(archer);
+    const charactereditor::AnimationSpec* animation = charactereditor::animationSpec(animationId);
+    if (!animation)
+        animation = charactereditor::animationSpec("stand");
+    if (!animation)
+        return;
+    const int localFrame = static_cast<int>((SDL_GetTicks() / std::max(1, animation->delayMs))
+        % static_cast<Uint64>(animation->frameCount));
+    const int frame = animation->firstFrame + localFrame;
+    SDL_FRect dst = {
+        archer.position.x - charactereditor::FRAME_WIDTH * 0.5f,
+        archer.position.y + fight::Archer::HEIGHT * 0.5f - charactereditor::FRAME_HEIGHT,
+        static_cast<float>(charactereditor::FRAME_WIDTH),
+        static_cast<float>(charactereditor::FRAME_HEIGHT)};
+
+    static constexpr std::array<const char*, 3> drawOrder = {"body", "head", "bow"};
+    for (const char* id : drawOrder)
+    {
+        const charactereditor::Canvas* canvas = customCanvas(character, id);
+        if (!canvas || frame >= canvas->frameCount)
+            continue;
+        const std::string atlasName = "custom/" + character.id + "/" + canvas->id;
+        _customAtlas.drawFrame(_sdlRenderer, atlasName,
+            charactereditor::FRAME_WIDTH, charactereditor::FRAME_HEIGHT,
+            frame, &dst, !archer.isFacingRight);
+    }
+}
+
+
+void renderer::FightRenderer::refreshCustomAssets()
+{
+    const std::filesystem::path root = charactereditor::CharacterStore::rootDirectory();
+    const std::filesystem::path metadataPath = root / "characters.xml";
+    const std::filesystem::path imagePath = root / "customCharacterAtlas.bmp";
+    const std::filesystem::path xmlPath = root / "customCharacterAtlas.xml";
+    const auto writeTime = [](const std::filesystem::path& path)
+    {
+        std::error_code error;
+        if (!std::filesystem::exists(path, error) || error)
+            return std::filesystem::file_time_type{};
+        const auto result = std::filesystem::last_write_time(path, error);
+        return error ? std::filesystem::file_time_type{} : result;
+    };
+
+    const auto metadataWriteTime = writeTime(metadataPath);
+    const auto imageWriteTime = writeTime(imagePath);
+    const auto xmlWriteTime = writeTime(xmlPath);
+    const bool assetsChanged = !_customAssetsInitialized ||
+        metadataWriteTime != _customMetadataWriteTime ||
+        imageWriteTime != _customAtlasImageWriteTime ||
+        xmlWriteTime != _customAtlasXmlWriteTime;
+    if (!assetsChanged)
+        return;
+
+    _customCharacters.reload();
+    _customAssetsInitialized = true;
+    _customMetadataWriteTime = metadataWriteTime;
+
+    std::error_code error;
+    if (!std::filesystem::exists(imagePath, error) || error ||
+        !std::filesystem::exists(xmlPath, error) || error)
+    {
+        if (_customAtlasLoaded)
+            _customAtlas.unload();
+        _customAtlasLoaded = false;
+        _customAtlasImageWriteTime = imageWriteTime;
+        _customAtlasXmlWriteTime = xmlWriteTime;
+        return;
+    }
+
+    _customAtlas.unload();
+    _customAtlasLoaded = false;
+    try
+    {
+        _customAtlasLoaded = _customAtlas.load(_sdlRenderer, imagePath.string(), xmlPath.string());
+        if (_customAtlasLoaded)
+        {
+            _customAtlasImageWriteTime = imageWriteTime;
+            _customAtlasXmlWriteTime = xmlWriteTime;
+        }
+    }
+    catch (const std::exception&)
+    {
+        _customAtlas.unload();
+    }
 }
 
 
@@ -507,6 +632,8 @@ void renderer::FightRenderer::drawFillerCoverOutward(
 
 void renderer::FightRenderer::render()
 {
+    refreshCustomAssets();
+
     Background& background = getBackground(_scene.getStage());
 
     int winw, winh;

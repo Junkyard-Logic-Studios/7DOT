@@ -15,6 +15,7 @@ enable_testing()
 
 add_executable(7dot_test
   archerCatalog.cpp
+  characterStore.cpp
   fightCollision.cpp
   fightMovement.cpp
   fightRendering.cpp
@@ -23,6 +24,7 @@ add_executable(7dot_test
   stageMapCatalog.cpp
   spriteCatalog.cpp
   "../src/renderer/ArcherCatalog.cpp"
+  "../src/charactereditor/CharacterStore.cpp"
   "../src/renderer/SpriteCatalog.cpp"
   "../src/renderer/StageMapCatalog.cpp"
   "../external/PugiXML/pugixml.cpp"
@@ -35,6 +37,7 @@ target_include_directories(7dot_test
 )
 target_link_libraries(7dot_test
   PRIVATE GTest::gtest_main
+  PRIVATE SDL3::SDL3
   PUBLIC glm::glm-header-only
 )
 

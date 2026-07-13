@@ -17,6 +17,7 @@ namespace mainmenu
         PVP,
         SESSION_STATS,
         OPTIONS,
+        EDITORS,
         QUIT,
 
         PVP_LOCAL,
@@ -26,6 +27,7 @@ namespace mainmenu
         SESSION_STATS_BACK,
         
         OPTIONS_BACK,
+
     };
 
     struct State

@@ -7,11 +7,14 @@
 #include "SpriteCatalog.hpp"
 #include "TextureAtlas.hpp"
 #include "ViewportLayout.hpp"
+#include "../charactereditor/CharacterStore.hpp"
 #include "../fight/mode.hpp"
 #include "../fight/stage.hpp"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iterator>
+#include <filesystem>
 #include <stdexcept>
 #include <string>
 
@@ -40,6 +43,7 @@ namespace renderer
         {
             _menuAtlas.unload();
             _atlas.unload();
+            _customAtlas.unload();
         }
 
         void pushState(State state)
@@ -50,6 +54,8 @@ namespace renderer
         void render()
         {
             using opt = selection::NavigationOptions;
+
+            refreshCustomAssets();
 
             // reset drawing
             SDL_SetRenderDrawColor(_sdlRenderer, 0, 0, 0, 255);
@@ -110,8 +116,7 @@ namespace renderer
                 fWriteLine("[ Characters ]");
                 for (auto &player : _state.players)
                 {
-                    const ArcherSkin *skin = previewSkin(player.character);
-                    std::string skinName = skin ? skin->name : "missing";
+                    std::string skinName = characterName(player.character);
 
                     char *text;
                     SDL_asprintf(&text, "device (host: %d, local: %d)",
@@ -123,7 +128,7 @@ namespace renderer
                     SDL_free(text);
 
                     SDL_asprintf(&text, "character: < %u >  %s",
-                                 renderer::ArcherCatalog::wrapCharacter(player.character, _archerCatalog.validBaseCount()),
+                                 renderer::ArcherCatalog::wrapCharacter(player.character, availableCharacterCount()),
                                  skinName.c_str());
                     SDL_RenderDebugText(_sdlRenderer, x, lineY + SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 2.0f, text);
                     SDL_free(text);
@@ -814,10 +819,106 @@ namespace renderer
 
         const ArcherSkin *previewSkin(unsigned int character) const
         {
-            if (_archerCatalog.validBaseCount() == 0)
+            if (_archerCatalog.validBaseCount() == 0 || character >= _archerCatalog.validBaseCount())
                 return nullptr;
 
             return &_archerCatalog.skinForCharacter(character);
+        }
+
+        std::size_t availableCharacterCount() const
+        {
+            return _archerCatalog.validBaseCount() + _customCharacters.characters().size();
+        }
+
+        const charactereditor::CustomCharacter *customCharacter(unsigned int character) const
+        {
+            const std::size_t builtInCount = _archerCatalog.validBaseCount();
+            if (character < builtInCount)
+                return nullptr;
+
+            const std::size_t customIndex = static_cast<std::size_t>(character) - builtInCount;
+            const auto &characters = _customCharacters.characters();
+            return customIndex < characters.size() ? &characters[customIndex] : nullptr;
+        }
+
+        const charactereditor::Canvas *customCanvas(
+            const charactereditor::CustomCharacter &character, const char *id) const
+        {
+            return charactereditor::CharacterStore::canvas(character, id);
+        }
+
+        std::string customAtlasName(
+            const charactereditor::CustomCharacter &character,
+            const charactereditor::Canvas &canvas) const
+        {
+            return "custom/" + character.id + "/" + canvas.id;
+        }
+
+        std::string characterName(unsigned int character) const
+        {
+            if (const auto *custom = customCharacter(character))
+                return custom->name;
+            if (const auto *skin = previewSkin(character))
+                return skin->name;
+            return "missing";
+        }
+
+        void refreshCustomAssets()
+        {
+            const std::filesystem::path root = charactereditor::CharacterStore::rootDirectory();
+            const std::filesystem::path metadataPath = root / "characters.xml";
+            const std::filesystem::path imagePath = root / "customCharacterAtlas.bmp";
+            const std::filesystem::path xmlPath = root / "customCharacterAtlas.xml";
+            const auto writeTime = [](const std::filesystem::path &path)
+            {
+                std::error_code error;
+                if (!std::filesystem::exists(path, error) || error)
+                    return std::filesystem::file_time_type{};
+                const auto result = std::filesystem::last_write_time(path, error);
+                return error ? std::filesystem::file_time_type{} : result;
+            };
+
+            const auto metadataWriteTime = writeTime(metadataPath);
+            const auto imageWriteTime = writeTime(imagePath);
+            const auto xmlWriteTime = writeTime(xmlPath);
+            const bool assetsChanged = !_customAssetsInitialized ||
+                metadataWriteTime != _customMetadataWriteTime ||
+                imageWriteTime != _customAtlasImageWriteTime ||
+                xmlWriteTime != _customAtlasXmlWriteTime;
+            if (!assetsChanged)
+                return;
+
+            _customCharacters.reload();
+            _customAssetsInitialized = true;
+            _customMetadataWriteTime = metadataWriteTime;
+
+            std::error_code error;
+            if (!std::filesystem::exists(imagePath, error) || error ||
+                !std::filesystem::exists(xmlPath, error) || error)
+            {
+                if (_customAtlasLoaded)
+                    _customAtlas.unload();
+                _customAtlasLoaded = false;
+                _customAtlasImageWriteTime = imageWriteTime;
+                _customAtlasXmlWriteTime = xmlWriteTime;
+                return;
+            }
+
+            _customAtlas.unload();
+            _customAtlasLoaded = false;
+            try
+            {
+                _customAtlasLoaded = _customAtlas.load(_sdlRenderer, imagePath.string(), xmlPath.string());
+                if (_customAtlasLoaded)
+                {
+                    _customAtlasImageWriteTime = imageWriteTime;
+                    _customAtlasXmlWriteTime = xmlWriteTime;
+                }
+            }
+            catch (const std::exception &)
+            {
+                _customAtlas.unload();
+            }
         }
 
         int previewAnimationFrame(const SpriteDef &sprite, const std::string &animationId) const
@@ -892,6 +993,36 @@ namespace renderer
 
         void drawCharacterPreview(const Player &player, float anchorX, float anchorY, float scale)
         {
+            if (const auto *custom = customCharacter(player.character))
+            {
+                if (!_customAtlasLoaded)
+                    return;
+
+                const charactereditor::AnimationSpec* animation =
+                    charactereditor::animationSpec("run");
+                if (!animation)
+                    return;
+                const int frame = animation->firstFrame
+                    + static_cast<int>((SDL_GetTicks() / animation->delayMs)
+                        % static_cast<Uint64>(animation->frameCount));
+                SDL_FRect dst = {
+                    anchorX - charactereditor::FRAME_WIDTH * scale * 0.5f,
+                    anchorY - charactereditor::FRAME_HEIGHT * scale * 0.5f,
+                    charactereditor::FRAME_WIDTH * scale,
+                    charactereditor::FRAME_HEIGHT * scale};
+                static constexpr std::array<const char*, 3> drawOrder = {"body", "head", "bow"};
+                for (const char* id : drawOrder)
+                {
+                    const auto* canvas = customCanvas(*custom, id);
+                    if (!canvas || frame >= canvas->frameCount)
+                        continue;
+                    _customAtlas.drawFrame(_sdlRenderer, customAtlasName(*custom, *canvas),
+                        charactereditor::FRAME_WIDTH, charactereditor::FRAME_HEIGHT,
+                        frame, &dst, false);
+                }
+                return;
+            }
+
             const ArcherSkin *skin = previewSkin(player.character);
             if (!skin)
                 return;
@@ -932,9 +1063,11 @@ namespace renderer
 
         TextureAtlas _menuAtlas;
         TextureAtlas _atlas;
+        TextureAtlas _customAtlas;
         SpriteCatalog _spriteCatalog;
         SpriteCatalog _menuSpriteCatalog;
         ArcherCatalog _archerCatalog;
+        charactereditor::CharacterStore _customCharacters;
         StageMapCatalog _stageMapCatalog;
         State _state;
         float _stageCarouselPosition = 0.0f;
@@ -956,6 +1089,11 @@ namespace renderer
         bool _sunkenCityTargetSelected = false;
         bool _mapCameraInitialized = false;
         bool _mapCursorInitialized = false;
+        bool _customAtlasLoaded = false;
+        bool _customAssetsInitialized = false;
+        std::filesystem::file_time_type _customMetadataWriteTime{};
+        std::filesystem::file_time_type _customAtlasImageWriteTime{};
+        std::filesystem::file_time_type _customAtlasXmlWriteTime{};
     };
 
 }; // end namespace renderer

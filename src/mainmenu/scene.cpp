@@ -41,6 +41,9 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
     //          effects
     //          bass
     //
+    //  Editors
+    //      character editor
+    //
     //  Quit
     // -------------------------------
 
@@ -80,6 +83,9 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
                 _state.currentLevel = OPTIONS;
                 _state.selected = OPTIONS_BACK;
                 break;
+
+            case EDITORS:
+                return UpdateReturnStatus::SWITCH_CHARACTER_EDITOR;
             
             case PVP_LOCAL:
                 _game.getSceneContext().startTime = currentTick + 1;
@@ -141,6 +147,7 @@ _Scene::UpdateReturnStatus mainmenu::Scene::update()
                     (_state.selected == PVP_BACK ? PVP_BACK : next) :
                     (_state.selected == PVP_LOCAL ? PVP_LOCAL : next);
                 break;
+
             }
 
             continue;   // recognize only 1 input per device

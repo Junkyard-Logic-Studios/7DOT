@@ -53,3 +53,19 @@ If you have built tests in the previous step, these can be executed with:
 ```
 
 The built game executable is still available at `build/bin/7dot`.
+
+## Character editor
+
+Open `Editors` from the main menu, then choose the active `Character Editor`
+card (the `Level Editor` card is a disabled placeholder). Built-in archers are
+shown as locked cards; characters created in the editor can be edited or
+deleted. The editor has separate Bow, Body, and Head canvases sharing aligned
+animation ranges for movement, dodge/dash, ledge and wall states, aiming, head
+looks, and bow draw/empty states. It supports mouse painting, right-click
+erasing, an HSV color wheel with value and alpha sliders, editable palette
+swatches, part/animation/frame navigation, and a composited animated preview.
+
+Saved characters are written separately from the original asset submodule to
+`custom_assets/Characters/` as `characters.xml`,
+`customCharacterAtlas.bmp`, and `customCharacterAtlas.xml`. They are appended
+to the in-game character roster the next time character selection is opened.

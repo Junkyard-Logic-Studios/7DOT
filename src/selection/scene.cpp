@@ -1,7 +1,37 @@
 #include "scene.hpp"
 #include "../renderer/selectionRenderer.hpp"
 #include "../renderer/ArcherCatalog.hpp"
+#include "../charactereditor/CharacterStore.hpp"
 #include "../game.hpp"
+#include <filesystem>
+
+
+
+namespace
+{
+    std::size_t validCharacterCount()
+    {
+        static charactereditor::CharacterStore customCharacters;
+        static std::filesystem::file_time_type metadataWriteTime{};
+        static bool initialized = false;
+
+        const auto metadataPath = charactereditor::CharacterStore::rootDirectory() / "characters.xml";
+        std::error_code error;
+        const bool exists = std::filesystem::exists(metadataPath, error) && !error;
+        const auto currentWriteTime = exists
+            ? std::filesystem::last_write_time(metadataPath, error)
+            : std::filesystem::file_time_type{};
+        if (!initialized || (!error && currentWriteTime != metadataWriteTime))
+        {
+            customCharacters.reload();
+            metadataWriteTime = currentWriteTime;
+            initialized = true;
+        }
+
+        return renderer::ArcherCatalog::defaultValidBaseCount()
+            + customCharacters.characters().size();
+    }
+}
 
 
 
@@ -79,13 +109,15 @@ bool selection::Scene::updateCharacterSelection(const State& cstate, State& nsta
                 // change character
                 float previousHAxis = input::get::horizontalAxis(previousInput);
                 float currentHAxis = input::get::horizontalAxis(currentInput);
-                std::size_t validCharacterCount = renderer::ArcherCatalog::defaultValidBaseCount();
+                const std::size_t characterCount = validCharacterCount();
+                player->character = renderer::ArcherCatalog::wrapCharacter(
+                    player->character, characterCount);
                 if (previousHAxis == 0.0f && currentHAxis > 0.0f)
                     player->character = renderer::ArcherCatalog::offsetCharacter(
-                        player->character, 1, validCharacterCount);
+                        player->character, 1, characterCount);
                 if (previousHAxis == 0.0f && currentHAxis < 0.0f)
                     player->character = renderer::ArcherCatalog::offsetCharacter(
-                        player->character, -1, validCharacterCount);
+                        player->character, -1, characterCount);
 
                 // quit player selection
                 if (input::get::cancel(toggle))

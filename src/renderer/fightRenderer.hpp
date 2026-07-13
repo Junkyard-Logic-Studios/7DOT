@@ -6,6 +6,8 @@
 #include "SpriteCatalog.hpp"
 #include "TextureAtlas.hpp"
 #include "ViewportLayout.hpp"
+#include "../charactereditor/CharacterStore.hpp"
+#include <filesystem>
 
 
 
@@ -30,6 +32,12 @@ namespace renderer
             const glm::vec2& worldPosition, const Player& player, bool fliphoriz,
             float worldY, float localXOffset = 0.0f, float localYOffset = 0.0f);
         void drawArcher(const fight::Archer& archer, const Player& player);
+        void drawCustomArcher(const fight::Archer& archer, const Player& player,
+            const charactereditor::CustomCharacter& character);
+        const charactereditor::CustomCharacter* customCharacter(unsigned int character) const;
+        const charactereditor::Canvas* customCanvas(
+            const charactereditor::CustomCharacter& character, const char* id) const;
+        void refreshCustomAssets();
         void drawArcherDebug(const fight::Archer& archer);
         void drawDevBuildText(int winw);
         std::string tilesetName() const;
@@ -43,15 +51,22 @@ namespace renderer
 
         const fight::Scene& _scene;
         TextureAtlas _atlas;
+		TextureAtlas _customAtlas;
     	TextureAtlas _bgAtlas;
         TextureAtlas _menuAtlas;
         SpriteCatalog _spriteCatalog;
         ArcherCatalog _archerCatalog;
+        charactereditor::CharacterStore _customCharacters;
         FightTilemapCacheState _tilemapCacheState;
         SDL_Texture* _worldTexture = nullptr;
         SDL_Texture* _tilemapTexture = nullptr;
         int _worldWidth = 0;
         int _worldHeight = 0;
+        bool _customAtlasLoaded = false;
+        bool _customAssetsInitialized = false;
+        std::filesystem::file_time_type _customMetadataWriteTime{};
+        std::filesystem::file_time_type _customAtlasImageWriteTime{};
+        std::filesystem::file_time_type _customAtlasXmlWriteTime{};
         State _state;
     };
 

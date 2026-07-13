@@ -5,6 +5,7 @@
 #include "sceneContext.hpp"
 #include "input/manager.hpp"
 #include "mainmenu/scene.hpp"
+#include "charactereditor/scene.hpp"
 #include "selection/scene.hpp"
 #include "fight/scene.hpp"
 
@@ -49,6 +50,7 @@ public:
 
         // create scenes
         _mainMenuScene  = std::make_unique<mainmenu::Scene>(*this);
+        _characterEditorScene = std::make_unique<charactereditor::Scene>(*this);
         _selectionScene = std::make_unique<selection::Scene>(*this);
         _fightScene     = std::make_unique<fight::Scene>(*this);
         
@@ -103,8 +105,12 @@ public:
         };
         switch (_activeScene->update())
         {
+        case _Scene::UpdateReturnStatus::STAY:
+            break;
         case _Scene::UpdateReturnStatus::SWITCH_MAINMENU:
             switchScene(_mainMenuScene.get()); break;
+        case _Scene::UpdateReturnStatus::SWITCH_CHARACTER_EDITOR:
+            switchScene(_characterEditorScene.get()); break;
         case _Scene::UpdateReturnStatus::SWITCH_SELECTION:
             switchScene(_selectionScene.get()); break;
         case _Scene::UpdateReturnStatus::SWITCH_FIGHT:
@@ -139,6 +145,7 @@ private:
     // game scenes
     SceneContext _sceneContext;
     std::unique_ptr<mainmenu::Scene>  _mainMenuScene;
+    std::unique_ptr<charactereditor::Scene> _characterEditorScene;
     std::unique_ptr<selection::Scene> _selectionScene;
     std::unique_ptr<fight::Scene>     _fightScene;
     _Scene* _activeScene;

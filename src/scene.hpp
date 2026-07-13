@@ -12,6 +12,7 @@ public:
     {
         STAY,
         SWITCH_MAINMENU,
+        SWITCH_CHARACTER_EDITOR,
         SWITCH_SELECTION,
         SWITCH_FIGHT,
         QUIT

@@ -77,6 +77,7 @@ namespace renderer
 					fWriteLine("PVP", _state.selected == opt::PVP);
 					fWriteLine("Session Stats", _state.selected == opt::SESSION_STATS);
 					fWriteLine("Options", _state.selected == opt::OPTIONS);
+					fWriteLine("Editors", _state.selected == opt::EDITORS);
 					fWriteLine("Quit", _state.selected == opt::QUIT);
 				}
 				break;
@@ -118,6 +119,7 @@ namespace renderer
 				y += SDL_DEBUG_TEXT_FONT_CHARACTER_SIZE * 4.0f;
 				fWriteLine("Back", _state.selected == opt::OPTIONS_BACK);
 				break;
+
 			}
 
 			SDL_RenderPresent(_sdlRenderer);

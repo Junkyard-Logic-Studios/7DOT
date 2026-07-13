@@ -14,6 +14,7 @@ endif()
 
 # track asset directory
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/")
+set(CUSTOM_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/custom_assets/")
 
 # make defines accessible to source code
 configure_file("configure.hpp.in" "configure.hpp")
